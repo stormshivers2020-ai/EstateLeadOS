@@ -97,6 +97,12 @@ export interface LocalAppState {
   leadPipelineItems: import("@/lib/types/pipeline").LeadPipelineItem[];
   leadPipelineEvents: import("@/lib/types/pipeline").LeadPipelineEvent[];
   automationRuns: import("@/lib/types/pipeline").AutomationRunRecord[];
+  programPackets: import("@/lib/types/program").LeadPacket[];
+  leadArchives: import("@/lib/types/program").LeadArchive[];
+  requiredDocuments: import("@/lib/types/program").RequiredDocument[];
+  assignmentReadiness: import("@/lib/types/program").AssignmentReadiness[];
+  reviewQueueItems: import("@/lib/types/program").ReviewQueueItem[];
+  packetPrintLogs: import("@/lib/types/program").PacketPrintLog[];
   billingSimulation: string;
   automation: AutomationState;
 }
@@ -153,6 +159,12 @@ function buildDemoState(): LocalAppState {
     leadPipelineItems: [],
     leadPipelineEvents: [],
     automationRuns: [],
+    programPackets: [],
+    leadArchives: [],
+    requiredDocuments: [],
+    assignmentReadiness: [],
+    reviewQueueItems: [],
+    packetPrintLogs: [],
     billingSimulation: "active",
     automation: { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null },
   };
@@ -205,6 +217,12 @@ function buildFreshState(): LocalAppState {
     leadPipelineItems: [],
     leadPipelineEvents: [],
     automationRuns: [],
+    programPackets: [],
+    leadArchives: [],
+    requiredDocuments: [],
+    assignmentReadiness: [],
+    reviewQueueItems: [],
+    packetPrintLogs: [],
     billingSimulation: "trial",
     automation: { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null },
   };
@@ -231,6 +249,12 @@ function stripDemoFromStored(stored: LocalAppState): LocalAppState {
   fresh.leadPipelineItems = stored.leadPipelineItems ?? [];
   fresh.leadPipelineEvents = stored.leadPipelineEvents ?? [];
   fresh.automationRuns = stored.automationRuns ?? [];
+  fresh.programPackets = stored.programPackets ?? [];
+  fresh.leadArchives = stored.leadArchives ?? [];
+  fresh.requiredDocuments = stored.requiredDocuments ?? [];
+  fresh.assignmentReadiness = stored.assignmentReadiness ?? [];
+  fresh.reviewQueueItems = stored.reviewQueueItems ?? [];
+  fresh.packetPrintLogs = stored.packetPrintLogs ?? [];
   fresh.automation = stored.automation ?? fresh.automation;
   fresh.importBatches = stored.importBatches.filter((b) => !b.demoRecord);
   fresh.connectorLogs = stored.connectorLogs ?? [];
@@ -286,6 +310,12 @@ export function getLocalState(): LocalAppState {
     if (!memoryState.leadPipelineItems) memoryState.leadPipelineItems = [];
     if (!memoryState.leadPipelineEvents) memoryState.leadPipelineEvents = [];
     if (!memoryState.automationRuns) memoryState.automationRuns = [];
+    if (!memoryState.programPackets) memoryState.programPackets = [];
+    if (!memoryState.leadArchives) memoryState.leadArchives = [];
+    if (!memoryState.requiredDocuments) memoryState.requiredDocuments = [];
+    if (!memoryState.assignmentReadiness) memoryState.assignmentReadiness = [];
+    if (!memoryState.reviewQueueItems) memoryState.reviewQueueItems = [];
+    if (!memoryState.packetPrintLogs) memoryState.packetPrintLogs = [];
     return memoryState;
   }
 

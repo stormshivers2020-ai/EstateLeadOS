@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { LeadVerificationTab } from "@/components/verification/LeadVerificationTab";
 import type { LeadVerificationBundle } from "@/lib/types/verification";
+import { PacketBuilderPanel } from "@/components/program/PacketBuilderPanel";
 import { cn } from "@/lib/utils/cn";
 
 interface LeadDetailTabsProps {
@@ -16,7 +17,7 @@ export function LeadDetailTabs({
   verificationBundle,
   overview,
 }: LeadDetailTabsProps) {
-  const [tab, setTab] = useState<"overview" | "evidence">("overview");
+  const [tab, setTab] = useState<"overview" | "evidence" | "packet">("overview");
 
   return (
     <div className="space-y-4">
@@ -31,10 +32,15 @@ export function LeadDetailTabs({
         <TabButton active={tab === "evidence"} onClick={() => setTab("evidence")}>
           Evidence
         </TabButton>
+        <TabButton active={tab === "packet"} onClick={() => setTab("packet")}>
+          Packet & Archive
+        </TabButton>
       </div>
       <div role="tabpanel">
-        {tab === "overview" ? overview : (
+        {tab === "overview" ? overview : tab === "evidence" ? (
           <LeadVerificationTab leadId={leadId} initialBundle={verificationBundle} />
+        ) : (
+          <PacketBuilderPanel leadId={leadId} />
         )}
       </div>
     </div>

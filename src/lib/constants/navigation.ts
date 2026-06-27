@@ -16,6 +16,8 @@ import {
   Wand2,
   Zap,
   Landmark,
+  Archive,
+  ListChecks,
   type LucideIcon,
 } from "lucide-react";
 
@@ -93,6 +95,22 @@ export const MAIN_NAVIGATION: NavItem[] = [
     icon: FileText,
     section: "Workflow",
     description: "State-specific workflows and checklists",
+  },
+  {
+    id: "review-queue",
+    label: "Review Queue",
+    href: "/review-queue",
+    icon: ListChecks,
+    section: "Workflow",
+    description: "Manual review, packets, compliance blockers, assignment-readiness",
+  },
+  {
+    id: "archive",
+    label: "Archive",
+    href: "/archive",
+    icon: Archive,
+    section: "Operations",
+    description: "Versioned lead packet archive — printable and review-ready",
   },
   {
     id: "documents",

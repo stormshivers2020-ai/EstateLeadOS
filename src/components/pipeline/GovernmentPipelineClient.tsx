@@ -10,6 +10,7 @@ import {
   PIPELINE_STAGE_LABELS,
   type CountyPipelineConfig,
 } from "@/lib/types/pipeline";
+import { RunEstateLeadOSModal } from "@/components/program/RunEstateLeadOSModal";
 import { Landmark, Play, Pause, Settings, AlertTriangle, Loader2, MapPin } from "lucide-react";
 
 interface DashboardData {
@@ -31,6 +32,8 @@ export function GovernmentPipelineClient() {
   const [loading, setLoading] = useState(true);
   const [runningCounty, setRunningCounty] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [runOpen, setRunOpen] = useState(false);
+  const [selectedCountyForRun, setSelectedCountyForRun] = useState<CountyPipelineConfig | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -114,6 +117,13 @@ export function GovernmentPipelineClient() {
       )}
 
       <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setRunOpen(true)}
+          className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600"
+        >
+          Run EstateLeadOS
+        </button>
         <Link
           href="/wizards/county-expansion"
           className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
@@ -123,7 +133,19 @@ export function GovernmentPipelineClient() {
         <Link href="/market-search" className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300">
           Government Record Search
         </Link>
+        <Link href="/review-queue" className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300">
+          Review Queue
+        </Link>
       </div>
+
+      <RunEstateLeadOSModal
+        open={runOpen}
+        onClose={() => { setRunOpen(false); setSelectedCountyForRun(null); }}
+        countyName={selectedCountyForRun?.countyName}
+        stateAbbr={selectedCountyForRun?.stateAbbr}
+        defaultAction={selectedCountyForRun ? "find_government_leads" : undefined}
+        onComplete={() => load()}
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         {counties.map((county) => (
@@ -173,17 +195,25 @@ export function GovernmentPipelineClient() {
                   <Settings className="h-3 w-3" />
                   Configure Sources
                 </Link>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedCountyForRun(county); setRunOpen(true); }}
+                  className="touch-target inline-flex items-center justify-center gap-1 rounded-lg border border-emerald-700/50 px-3 py-2 text-xs text-emerald-300"
+                >
+                  <Play className="h-3 w-3" />
+                  Run EstateLeadOS
+                </button>
                 <Link href="/lead-feed" className="touch-target rounded-lg border border-slate-600 px-3 py-2 text-xs text-slate-300">
                   View Leads
+                </Link>
+                <Link href="/review-queue" className="touch-target rounded-lg border border-amber-700/50 px-3 py-2 text-xs text-amber-200">
+                  Manual Review Queue
                 </Link>
                 <Link href="/audit-trail" className="touch-target rounded-lg border border-slate-600 px-3 py-2 text-xs text-slate-300">
                   View Errors
                 </Link>
                 <Link href="/settings" className="touch-target rounded-lg border border-slate-600 px-3 py-2 text-xs text-slate-300">
                   View Source Registry
-                </Link>
-                <Link href="/lead-feed" className="touch-target rounded-lg border border-amber-700/50 px-3 py-2 text-xs text-amber-200">
-                  Manual Review Queue
                 </Link>
               </div>
             </CardContent>
