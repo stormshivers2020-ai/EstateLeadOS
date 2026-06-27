@@ -69,6 +69,11 @@ export function buildVerificationFromCandidate(
   candidate: LeadSearchCandidate,
   searchId: string
 ): BuiltVerificationEntities {
+  const gov = candidate.governmentRecord;
+  if (gov) {
+    return buildVerificationFromGovernmentRecord(leadId, organizationId, candidate, gov, searchId);
+  }
+
   const now = new Date().toISOString();
   const host = hostnameFromUrl(candidate.sourceUrl);
   const screenshotUrl = maybeScreenshotUrl(candidate.sourceUrl);
@@ -193,6 +198,201 @@ export function buildVerificationFromCandidate(
   if (screenshotUrl) {
     propertyMedia.push(
       buildSourceScreenshotMedia(leadId, organizationId, screenshotUrl, host, candidate.sourceUrl)
+    );
+  }
+
+  return {
+    recordHit,
+    evidenceSources: annotateCitations(evidenceSources),
+    persons,
+    contactCandidates,
+    propertyMedia,
+  };
+}
+
+function buildVerificationFromGovernmentRecord(
+  leadId: string,
+  organizationId: string,
+  candidate: LeadSearchCandidate,
+  gov: NonNullable<LeadSearchCandidate["governmentRecord"]>,
+  searchId: string
+): BuiltVerificationEntities {
+  const now = new Date().toISOString();
+  const screenshotUrl = maybeScreenshotUrl(gov.sourceUrl);
+  const matchedFields: Record<string, string> = {
+    property_address: gov.propertyAddress ?? candidate.propertyAddress,
+    jurisdiction: gov.jurisdiction,
+    record_type: gov.recordType,
+  };
+  if (gov.decedentName) matchedFields.decedent_name = gov.decedentName;
+  if (gov.estateCaseNumber) matchedFields.estate_case_number = gov.estateCaseNumber;
+  if (gov.deedReference) matchedFields.deed_reference = gov.deedReference;
+  if (gov.personalRepresentative) matchedFields.personal_representative = gov.personalRepresentative;
+
+  const recordHit: RecordHit = {
+    id: uid("rh"),
+    organizationId,
+    leadId,
+    searchId,
+    sourceName: gov.sourceName,
+    sourceType: gov.sourceType,
+    sourceUrl: gov.sourceUrl,
+    sourceTitle: gov.title,
+    rawSnippet: gov.snippet,
+    matchedFields,
+    confidenceScore: gov.confidenceScore,
+    createdAt: now,
+  };
+
+  const evidenceSources: EvidenceSource[] = [
+    {
+      id: uid("ev"),
+      organizationId,
+      leadId,
+      recordHitId: recordHit.id,
+      sourceName: gov.sourceName,
+      sourceType: gov.sourceType,
+      sourceUrl: gov.sourceUrl,
+      sourceTitle: gov.title,
+      citationLabel: gov.recordType.replace(/_/g, " "),
+      retrievedAt: now,
+      screenshotUrl,
+      sourceExcerpt: gov.snippet,
+      sourceHash: hashExcerpt(gov.snippet),
+      confidenceScore: gov.confidenceScore,
+      matchedFields,
+      createdAt: now,
+    },
+  ];
+
+  if (gov.deedReference) {
+    evidenceSources.push({
+      id: uid("ev"),
+      organizationId,
+      leadId,
+      recordHitId: recordHit.id,
+      sourceName: gov.sourceName,
+      sourceType: "deed_land_record",
+      sourceUrl: gov.sourceUrl,
+      sourceTitle: gov.title,
+      citationLabel: `Deed/instrument ${gov.deedReference}`,
+      retrievedAt: now,
+      screenshotUrl: null,
+      sourceExcerpt: `Deed reference: ${gov.deedReference}`,
+      sourceHash: hashExcerpt(gov.deedReference),
+      confidenceScore: Math.min(90, gov.confidenceScore + 4),
+      matchedFields: { deed_reference: gov.deedReference },
+      createdAt: now,
+    });
+  }
+
+  if (gov.estateCaseNumber || gov.decedentName) {
+    evidenceSources.push({
+      id: uid("ev"),
+      organizationId,
+      leadId,
+      recordHitId: recordHit.id,
+      sourceName: gov.sourceName,
+      sourceType: "probate_estate",
+      sourceUrl: gov.sourceUrl,
+      sourceTitle: gov.title,
+      citationLabel: "Probate / estate record",
+      retrievedAt: now,
+      screenshotUrl: null,
+      sourceExcerpt: [gov.decedentName, gov.estateCaseNumber].filter(Boolean).join(" — "),
+      sourceHash: hashExcerpt(gov.estateCaseNumber ?? gov.decedentName ?? ""),
+      confidenceScore: Math.min(92, gov.confidenceScore + 6),
+      matchedFields: {
+        ...(gov.estateCaseNumber ? { estate_case_number: gov.estateCaseNumber } : {}),
+        ...(gov.decedentName ? { decedent_name: gov.decedentName } : {}),
+      },
+      createdAt: now,
+    });
+  }
+
+  const persons: PersonVerification[] = [];
+  const personName = gov.personalRepresentative ?? gov.decedentName ?? candidate.ownerName;
+  if (personName) {
+    const roleLabel = gov.personalRepresentative
+      ? "possible_personal_representative"
+      : gov.decedentName
+        ? "possible_interested_person"
+        : inferPersonRole(personName, candidate.signals);
+    persons.push({
+      id: uid("pv"),
+      organizationId,
+      leadId,
+      personName,
+      roleLabel,
+      connectionRationale: `Connected through official ${gov.sourceName} record. EstateLeadOS labels this as a possible connection — not a confirmed heir without manual approval.`,
+      confidenceScore: gov.confidenceScore,
+      verificationStatus: "needs_verification",
+      approvedBy: null,
+      approvedAt: null,
+      rejectedAt: null,
+      notes: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  const contactCandidates: ContactCandidate[] = [];
+  const mailing = gov.mailingAddress ?? extractMailingAddress(gov.snippet);
+  if (mailing && persons[0]) {
+    const scored = scoreContactCandidate({
+      personName: persons[0].personName,
+      contactType: "mailing_address",
+      contactValue: mailing,
+      sourceType: gov.sourceType,
+      sourceName: gov.sourceName,
+      matchedPersonName: persons[0].personName,
+      hasEstateRole: Boolean(gov.personalRepresentative || gov.decedentName),
+      matchedMailingAddress: true,
+    });
+    contactCandidates.push({
+      id: uid("cc"),
+      organizationId,
+      leadId,
+      personVerificationId: persons[0].id,
+      personName: persons[0].personName,
+      personRole: gov.personalRepresentative ? "personal_representative" : "possible_heir",
+      contactType: "mailing_address",
+      contactValue: mailing,
+      sourceName: gov.sourceName,
+      sourceUrl: gov.sourceUrl,
+      confidenceScore: scored.confidenceScore,
+      verificationStatus: scored.verificationStatus,
+      lastVerifiedAt: null,
+      notes: scored.rationale,
+      createdAt: now,
+    });
+  }
+
+  const propertyMedia: PropertyMedia[] = [];
+  const mapType =
+    /gis|parcel/i.test(gov.sourceType) ? "parcel_map" : /assessment|tax|property/i.test(gov.sourceType) ? "assessor_photo" : "parcel_map";
+
+  propertyMedia.push({
+    id: uid("media"),
+    organizationId,
+    leadId,
+    propertyId: null,
+    mediaType: mapType,
+    mediaUrl: buildStaticMapMedia(leadId, organizationId, candidate.propertyAddress).mediaUrl,
+    sourceName: gov.sourceName,
+    sourceUrl: gov.sourceUrl,
+    attribution: `${gov.sourceName} — parcel visual with map fallback`,
+    retrievedAt: now,
+    createdAt: now,
+  });
+
+  propertyMedia.push(buildStaticMapMedia(leadId, organizationId, candidate.propertyAddress));
+
+  const streetView = buildStreetViewMedia(leadId, organizationId, candidate.propertyAddress);
+  if (streetView) propertyMedia.push(streetView);
+  if (screenshotUrl) {
+    propertyMedia.push(
+      buildSourceScreenshotMedia(leadId, organizationId, screenshotUrl, gov.sourceName, gov.sourceUrl)
     );
   }
 

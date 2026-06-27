@@ -24,6 +24,9 @@ export type ContactVerificationStatus =
   | "do_not_contact";
 
 export type PropertyMediaType =
+  | "county_gis_photo"
+  | "parcel_map"
+  | "assessor_photo"
   | "county_photo"
   | "street_view"
   | "static_map"
@@ -59,6 +62,7 @@ export interface EvidenceSource {
   sourceExcerpt?: string | null;
   sourceHash?: string | null;
   confidenceScore: number;
+  matchedFields?: Record<string, string>;
   createdAt: string;
   citationNumber?: number;
   formattedCitation?: string;
@@ -87,6 +91,7 @@ export interface ContactCandidate {
   leadId: string;
   personVerificationId?: string | null;
   personName?: string | null;
+  personRole?: string | null;
   contactType: ContactType;
   contactValue: string;
   sourceName?: string | null;
@@ -119,7 +124,7 @@ export interface VerificationActionLog {
   actorUserId?: string | null;
   actorUserName?: string | null;
   actionType: string;
-  targetType: "person" | "contact" | "evidence";
+  targetType: "person" | "contact" | "evidence" | "lead";
   targetId?: string | null;
   sourceEvidenceId?: string | null;
   contactMethod?: string | null;
@@ -157,4 +162,6 @@ export interface LeadVerificationBundle {
   propertyMedia: PropertyMedia[];
   actionLogs: VerificationActionLog[];
   proofChain: ProofChainStep[];
+  governmentStatus?: import("@/lib/types/government").GovernmentVerificationStatus;
+  governmentEvaluation?: import("@/lib/types/government").GovernmentVerificationEvaluation;
 }

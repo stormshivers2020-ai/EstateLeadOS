@@ -29,6 +29,12 @@ export function EvidenceCard({ source }: EvidenceCardProps) {
         <Badge variant="info">{source.confidenceScore}%</Badge>
       </div>
 
+      {source.matchedFields && Object.keys(source.matchedFields).length > 0 && (
+        <p className="mt-2 text-xs text-slate-500">
+          Matched: {Object.entries(source.matchedFields).map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`).join(" · ")}
+        </p>
+      )}
+
       {source.sourceExcerpt && (
         <p className="mt-2 text-slate-400">{source.sourceExcerpt}</p>
       )}

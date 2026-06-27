@@ -20,6 +20,10 @@ export interface LeadSearchCandidate {
   complianceRiskScore: number;
   dataConfidenceScore: number;
   signals: string[];
+  /** Present when sourced from official government connector */
+  governmentRecord?: import("@/lib/types/government").GovernmentNormalizedRecord;
+  governmentVerificationStatus?: import("@/lib/types/government").GovernmentVerificationStatus;
+  isGovernmentSource?: boolean;
 }
 
 export interface PendingInternetLead {
@@ -35,6 +39,8 @@ export interface InternetLeadSearchInput {
   county: string;
   city?: string;
   maxResults?: number;
+  /** When true (default), only official government sources can create leads */
+  governmentSourcesOnly?: boolean;
 }
 
 export interface InternetLeadDiscoveryResult {
@@ -42,9 +48,11 @@ export interface InternetLeadDiscoveryResult {
   queries: string[];
   hitsScanned: number;
   candidatesFound: number;
-  /** Leads queued for operator approval (not yet in Lead Feed). */
   pendingQueued: number;
   duplicatesSkipped: number;
+  rejectedSources: number;
+  connectorsRun: number;
+  governmentSourcesOnly: boolean;
   errors: number;
   pending: Array<{ id: string; propertyAddress: string; ownerName: string; sourceUrl: string }>;
   warnings: string[];

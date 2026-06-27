@@ -89,6 +89,9 @@ export interface LocalAppState {
   connectorLogs: ConnectorLogRecord[];
   pendingInternetLeads: PendingInternetLead[];
   verification: LocalVerificationState;
+  governmentSourcesOnly: boolean;
+  rejectedSources: import("@/lib/types/government").RejectedSourceRecord[];
+  leadGovernmentStatus: Record<string, string>;
   billingSimulation: string;
   automation: AutomationState;
 }
@@ -138,6 +141,9 @@ function buildDemoState(): LocalAppState {
     connectorLogs: [],
     pendingInternetLeads: [],
     verification: getEmptyVerificationState(),
+    governmentSourcesOnly: true,
+    rejectedSources: [],
+    leadGovernmentStatus: {},
     billingSimulation: "active",
     automation: { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null },
   };
@@ -183,6 +189,9 @@ function buildFreshState(): LocalAppState {
     connectorLogs: [],
     pendingInternetLeads: [],
     verification: getEmptyVerificationState(),
+    governmentSourcesOnly: true,
+    rejectedSources: [],
+    leadGovernmentStatus: {},
     billingSimulation: "trial",
     automation: { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null },
   };
@@ -200,6 +209,9 @@ function stripDemoFromStored(stored: LocalAppState): LocalAppState {
   fresh.leads = stored.leads.filter((l) => !l.demoRecord && l.origin !== "demo");
   fresh.pendingInternetLeads = stored.pendingInternetLeads ?? [];
   fresh.verification = stored.verification ?? getEmptyVerificationState();
+  fresh.governmentSourcesOnly = stored.governmentSourcesOnly ?? true;
+  fresh.rejectedSources = stored.rejectedSources ?? [];
+  fresh.leadGovernmentStatus = stored.leadGovernmentStatus ?? {};
   fresh.automation = stored.automation ?? fresh.automation;
   fresh.importBatches = stored.importBatches.filter((b) => !b.demoRecord);
   fresh.connectorLogs = stored.connectorLogs ?? [];
@@ -239,6 +251,15 @@ export function getLocalState(): LocalAppState {
     }
     if (!memoryState.verification) {
       memoryState.verification = getEmptyVerificationState();
+    }
+    if (memoryState.governmentSourcesOnly === undefined) {
+      memoryState.governmentSourcesOnly = true;
+    }
+    if (!memoryState.rejectedSources) {
+      memoryState.rejectedSources = [];
+    }
+    if (!memoryState.leadGovernmentStatus) {
+      memoryState.leadGovernmentStatus = {};
     }
     return memoryState;
   }

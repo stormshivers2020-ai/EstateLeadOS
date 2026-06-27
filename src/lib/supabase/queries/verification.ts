@@ -378,3 +378,25 @@ export async function updateContactCandidate(
 
   return mapContact(data as Record<string, unknown>);
 }
+
+export async function insertActionLog(
+  log: Omit<VerificationActionLog, "id" | "createdAt">
+): Promise<void> {
+  assertSupabaseConfigured();
+  const orgId = await getCurrentOrganizationId();
+  if (!orgId) return;
+
+  const supabase = await createClient();
+  await supabase.from("verification_action_logs").insert({
+    organization_id: orgId,
+    lead_id: log.leadId,
+    actor_user_id: log.actorUserId,
+    actor_user_name: log.actorUserName,
+    action_type: log.actionType,
+    target_type: log.targetType,
+    target_id: log.targetId,
+    source_evidence_id: log.sourceEvidenceId,
+    contact_method: log.contactMethod,
+    notes: log.notes,
+  });
+}

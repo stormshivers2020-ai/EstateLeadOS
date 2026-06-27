@@ -13,7 +13,8 @@ import { ProofChainTimeline } from "./ProofChainTimeline";
 import { EvidenceCard } from "./EvidenceCard";
 import { PropertyVisualPanel } from "./PropertyVisualPanel";
 import { ContactCandidateCard } from "./ContactCandidateCard";
-import { ShieldAlert } from "lucide-react";
+import { GOVERNMENT_STATUS_LABELS } from "@/lib/types/government";
+import { ShieldAlert, Landmark } from "lucide-react";
 
 interface LeadVerificationTabProps {
   leadId: string;
@@ -53,18 +54,54 @@ export function LeadVerificationTab({ leadId, initialBundle }: LeadVerificationT
     await refresh();
   }
 
+  async function leadAction(action: "approve" | "reject" | "needs_research") {
+    await fetch(`/api/leads/${leadId}/verification/lead`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    await refresh();
+  }
+
   if (!bundle) {
     return (
       <Card>
         <CardContent className="py-8 text-center text-sm text-slate-400">
-          No verification evidence yet. Run internet search or attach source records — evidence is saved when search results are queued or approved.
+          No government evidence yet. Run a Government Record Search — only official .gov sources create leads.
         </CardContent>
       </Card>
     );
   }
 
+  const govStatus = bundle.governmentStatus ?? "unverified";
+  const govEval = bundle.governmentEvaluation;
+
   return (
     <div className="space-y-6">
+      <Card className="border-sky-800/40">
+        <CardHeader>
+          <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+            <Landmark className="h-4 w-4 text-sky-400" />
+            Government Verification Status
+            <Badge variant="info">{GOVERNMENT_STATUS_LABELS[govStatus]}</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {govEval && govEval.missingRequirements.length > 0 && (
+            <ul className="space-y-1 text-sm text-slate-400">
+              {govEval.missingRequirements.map((m) => (
+                <li key={m}>• Still needed: {m}</li>
+              ))}
+            </ul>
+          )}
+          <div className="mobile-action-row">
+            <ActionButton label="Approve Lead" onClick={() => leadAction("approve")} variant="primary" />
+            <ActionButton label="Reject Lead" onClick={() => leadAction("reject")} />
+            <ActionButton label="Mark Needs Research" onClick={() => leadAction("needs_research")} />
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="rounded-lg border border-amber-700/40 bg-amber-900/15 px-4 py-3 text-sm text-amber-100">
         <div className="flex items-start gap-2">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
@@ -99,7 +136,7 @@ export function LeadVerificationTab({ leadId, initialBundle }: LeadVerificationT
       <ProofChainTimeline steps={bundle.proofChain} evidenceSources={bundle.evidenceSources} />
 
       <div>
-        <h3 className="mb-3 text-sm font-medium text-slate-200">Linked Source Cards</h3>
+        <h3 className="mb-3 text-sm font-medium text-slate-200">Evidence Timeline — Source Cards</h3>
         <div className="space-y-3">
           {bundle.evidenceSources.map((source) => (
             <EvidenceCard key={source.id} source={source} />

@@ -7,9 +7,11 @@ interface PropertyVisualPanelProps {
 }
 
 export function PropertyVisualPanel({ media }: PropertyVisualPanelProps) {
+  const parcel = media.find((m) => m.mediaType === "parcel_map");
+  const assessor = media.find((m) => m.mediaType === "assessor_photo" || m.mediaType === "county_gis_photo");
+  const county = media.find((m) => m.mediaType === "county_photo");
   const map = media.find((m) => m.mediaType === "static_map");
   const street = media.find((m) => m.mediaType === "street_view");
-  const county = media.find((m) => m.mediaType === "county_photo");
   const screenshot = media.find((m) => m.mediaType === "source_screenshot");
 
   if (media.length === 0) return null;
@@ -24,7 +26,9 @@ export function PropertyVisualPanel({ media }: PropertyVisualPanelProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          {county && <MediaTile media={county} label="View Property Photo" />}
+          {assessor && <MediaTile media={assessor} label="View Property Photo" />}
+          {parcel && <MediaTile media={parcel} label="View Parcel Map" />}
+          {county && !assessor && <MediaTile media={county} label="View Property Photo" />}
           {map && <MediaTile media={map} label="View Map" />}
           {street && <MediaTile media={street} label="Street View" />}
           {screenshot && <MediaTile media={screenshot} label="Source Screenshot" />}

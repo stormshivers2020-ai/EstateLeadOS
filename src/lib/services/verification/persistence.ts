@@ -8,6 +8,7 @@ import type {
   LeadVerificationBundle,
   PersonVerification,
 } from "@/lib/types/verification";
+import { evaluateGovernmentVerification } from "@/lib/services/government/verification-engine";
 import { assembleVerificationBundle } from "./proof-chain";
 import {
   getLeadVerificationBundleLocal,
@@ -39,7 +40,8 @@ export async function getLeadVerificationBundle(
   meta?: { propertyAddress: string; ownerName?: string | null; parcelId?: string | null }
 ): Promise<LeadVerificationBundle | null> {
   if (isSupabaseMode()) {
-    return supabaseVerification.fetchVerificationBundle(leadId, meta);
+    const bundle = await supabaseVerification.fetchVerificationBundle(leadId, meta);
+    return bundle ? enrichBundle(bundle) : null;
   }
 
   const local = getLeadVerificationBundleLocal(leadId, meta);
@@ -51,17 +53,28 @@ export async function getLeadVerificationBundle(
     return null;
   }
 
-  return assembleVerificationBundle(leadId, {
-    propertyAddress: meta?.propertyAddress ?? "",
-    ownerName: meta?.ownerName,
-    parcelId: meta?.parcelId,
-    recordHits: local.recordHits,
-    evidenceSources: local.evidenceSources,
-    persons: local.persons,
-    contactCandidates: local.contactCandidates,
-    propertyMedia: local.propertyMedia,
-    actionLogs: local.actionLogs,
-  });
+  return enrichBundle(
+    assembleVerificationBundle(leadId, {
+      propertyAddress: meta?.propertyAddress ?? "",
+      ownerName: meta?.ownerName,
+      parcelId: meta?.parcelId,
+      recordHits: local.recordHits,
+      evidenceSources: local.evidenceSources,
+      persons: local.persons,
+      contactCandidates: local.contactCandidates,
+      propertyMedia: local.propertyMedia,
+      actionLogs: local.actionLogs,
+    })
+  );
+}
+
+function enrichBundle(bundle: LeadVerificationBundle): LeadVerificationBundle {
+  const governmentEvaluation = evaluateGovernmentVerification(bundle);
+  return {
+    ...bundle,
+    governmentStatus: governmentEvaluation.status,
+    governmentEvaluation,
+  };
 }
 
 export async function updatePersonVerification(
@@ -114,4 +127,64 @@ export async function updateContactCandidate(
     return supabaseVerification.updateContactCandidate(leadId, contactId, action, logBase);
   }
   return updateContactCandidateLocal(leadId, contactId, action, logBase);
+}
+
+export async function updateLeadGovernmentVerification(
+  leadId: string,
+  action: "approve" | "reject" | "needs_research",
+  options?: { notes?: string }
+): Promise<LeadVerificationBundle | null> {
+  const session = getSessionContext();
+  const bundle = await getLeadVerificationBundle(leadId);
+  if (!bundle) return null;
+
+  let status = bundle.governmentStatus ?? "unverified";
+  if (action === "approve") {
+    const evaluation = evaluateGovernmentVerification(bundle, true);
+    status = evaluation.canVerify ? "verified_government_lead" : "needs_manual_research";
+  } else if (action === "reject") {
+    status = "rejected_bad_match";
+  } else {
+    status = "needs_manual_research";
+  }
+
+  if (isSupabaseMode()) {
+    const { updateLeadGovernmentStatus } = await import("@/lib/supabase/queries/government");
+    await updateLeadGovernmentStatus(leadId, status);
+  } else {
+    const state = (await import("@/lib/local/localStateStore")).getLocalState() as ReturnType<
+      typeof import("@/lib/local/localStateStore").getLocalState
+    > & { leadGovernmentStatus?: Record<string, string> };
+    if (!state.leadGovernmentStatus) state.leadGovernmentStatus = {};
+    state.leadGovernmentStatus[leadId] = status;
+    (await import("@/lib/local/localStateStore")).persistLocalState();
+  }
+
+  const logBase = {
+    organizationId: session.organizationId,
+    leadId,
+    actorUserId: session.userId,
+    actorUserName: session.userName,
+    actionType: `lead_${action}`,
+    targetType: "lead" as const,
+    targetId: leadId,
+    sourceEvidenceId: null,
+    contactMethod: null,
+    notes: options?.notes ?? null,
+  };
+
+  if (isSupabaseMode()) {
+    await supabaseVerification.insertActionLog(logBase);
+  } else {
+    const { ensureVerificationState } = await import("./local-store");
+    const v = ensureVerificationState();
+    v.actionLogs.unshift({
+      ...logBase,
+      id: `val-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    });
+    (await import("@/lib/local/localStateStore")).persistLocalState();
+  }
+
+  return getLeadVerificationBundle(leadId);
 }

@@ -11,5 +11,6 @@ export {
   persistVerificationForCandidateAsync,
   updatePersonVerification,
   updateContactCandidate,
+  updateLeadGovernmentVerification,
   getEmptyVerificationState,
 } from "./persistence";
