@@ -86,6 +86,50 @@ Banner: *Fresh Start Mode is active. No demo records are loaded.*
 
 Clear via **Settings → Local Preview Controls → Clear Local Data**.
 
+## Deploy to Vercel
+
+The app builds on Vercel with **Option A** env vars below (no database password required). Internet lead search needs `TAVILY_API_KEY` on the server.
+
+### 1. Push to GitHub (recommended)
+
+```bash
+git remote add origin https://github.com/YOUR_USER/EstateLeadOS.git
+git push -u origin main
+```
+
+In [vercel.com/new](https://vercel.com/new) → **Import** your repo → Framework: **Next.js** (auto-detected).
+
+### 2. Or deploy from this machine
+
+```bash
+npx vercel login
+npx vercel link
+npx vercel deploy --prod
+```
+
+### 3. Environment variables (Vercel → Project → Settings → Environment Variables)
+
+Apply to **Production**, **Preview**, and **Development**:
+
+| Variable | Value |
+|----------|--------|
+| `NEXT_PUBLIC_DATA_PROVIDER` | `local` |
+| `NEXT_PUBLIC_APP_MODE` | `local` |
+| `NEXT_PUBLIC_USE_SUPABASE` | `false` |
+| `NEXT_PUBLIC_USE_LOCAL_AUTH` | `true` |
+| `NEXT_PUBLIC_ENABLE_DEMO_MODE` | `true` |
+| `NEXT_PUBLIC_DEMO_MODE` | `true` |
+| `NEXT_PUBLIC_ENABLE_FRESH_START` | `true` |
+| `TAVILY_API_KEY` | your Tavily key (Market Search + automation) |
+
+Optional (for live Supabase later): see `.env.local.example` **Option B**.
+
+### 4. Redeploy
+
+After saving env vars: **Deployments → … → Redeploy**.
+
+Open your `*.vercel.app` URL → **Dashboard** should load with demo data. Use **Market Search** to test internet lead discovery.
+
 ### CSV Import Testing
 
 Import CSV locally without Supabase. Use **Import Sample CSV** in Local Preview Controls or upload via the import flow. Sample CSV uses fictional data only.

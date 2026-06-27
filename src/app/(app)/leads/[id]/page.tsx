@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { LeadDetailView } from "@/components/crm/LeadDetailView";
+import { LeadDetailTabs } from "@/components/crm/LeadDetailTabs";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { isDemoMode } from "@/lib/config/app-mode";
+import { getLeadVerificationBundle } from "@/lib/services/verification";
 import {
   getCountyProfile,
   getLeadComplianceContext,
@@ -51,6 +53,11 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
   const followUps = await getFollowUps(id);
   const notes = await getLeadNotes(id);
   const auditEvents = getCrmAuditEvents(id);
+  const verificationBundle = await getLeadVerificationBundle(id, {
+    propertyAddress: lead.propertyAddress,
+    ownerName: lead.ownerName,
+    parcelId: lead.parcelId,
+  });
 
   const checkResult = complianceContext
     ? runLeadComplianceCheck({
@@ -68,7 +75,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
 
   return (
     <AppShell title="Lead Intelligence Dossier" subtitle={lead.propertyAddress}>
-      <Link href="/lead-feed" className="mb-4 inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
+      <Link href="/lead-feed" className="mb-4 inline-flex min-h-11 items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
         <ArrowLeft className="h-4 w-4" />
         Back to Lead Feed
       </Link>
@@ -79,17 +86,23 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
         </div>
       )}
 
-      <LeadDetailView
-        lead={lead}
-        complianceContext={complianceContext}
-        checkResult={checkResult}
-        communications={communications}
-        followUps={followUps}
-        notes={notes}
-        auditEvents={auditEvents}
-        stateSupportStatus={state?.supportedStatus}
-        countySupportStatus={county?.supportedStatus}
-        isDemo={isDemo}
+      <LeadDetailTabs
+        leadId={id}
+        verificationBundle={verificationBundle}
+        overview={
+          <LeadDetailView
+            lead={lead}
+            complianceContext={complianceContext}
+            checkResult={checkResult}
+            communications={communications}
+            followUps={followUps}
+            notes={notes}
+            auditEvents={auditEvents}
+            stateSupportStatus={state?.supportedStatus}
+            countySupportStatus={county?.supportedStatus}
+            isDemo={isDemo}
+          />
+        }
       />
     </AppShell>
   );

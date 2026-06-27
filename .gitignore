@@ -5,8 +5,14 @@ tsconfig.tsbuildinfo
 # Keep environment variables out of version control
 .env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # Cursor MCP config may contain API keys
 .cursor/mcp.json
+
+# Vercel local link metadata
+.vercel
 
 /src/generated/prisma

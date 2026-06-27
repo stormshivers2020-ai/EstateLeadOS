@@ -34,11 +34,11 @@ export function LeadDetailHeader({
   const risk = complianceRiskScore >= 80 ? "restricted" : complianceRiskScore >= 60 ? "elevated" : complianceRiskScore >= 40 ? "moderate" : "low";
 
   return (
-    <div className="premium-panel rounded-xl p-6">
+    <div className="premium-panel rounded-xl p-4 sm:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
+        <div className="min-w-0">
           <p className="nova-label">Nova Intelligence Layer</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-[var(--nova-text-primary)]">{propertyAddress}</h1>
+          <h1 className="mt-1 text-xl font-bold tracking-tight break-words text-[var(--nova-text-primary)] sm:text-2xl">{propertyAddress}</h1>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Badge variant="info">{getLeadTypeName(leadType as LeadTypeId)}</Badge>
             <PipelineStageBadge stage={pipelineStage} />

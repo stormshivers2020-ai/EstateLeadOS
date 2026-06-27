@@ -23,8 +23,10 @@ import type { DashboardMetrics } from "@/lib/types";
 import type { FullLeadDetail, CommunicationLog, FollowUpReminder, DoNotContactRecord, LeadNote, CrmAuditEvent } from "@/lib/types/crm";
 import type { PlatformAuditLog } from "@/lib/types/platform";
 import type { PendingInternetLead } from "@/lib/services/lead-discovery/types";
+import type { LocalVerificationState } from "@/lib/services/verification/verification-state";
+import { getEmptyVerificationState } from "@/lib/services/verification/verification-state";
 import type { AutomationState } from "@/lib/automation/automationTypes";
-import { loadLocalState, saveLocalState, isBrowser } from "./localStorageClient";
+import { loadLocalState, saveLocalState, isBrowser, clearLocalState } from "./localStorageClient";
 
 export interface ImportBatchRecord {
   id: string;
@@ -86,6 +88,7 @@ export interface LocalAppState {
   importBatches: ImportBatchRecord[];
   connectorLogs: ConnectorLogRecord[];
   pendingInternetLeads: PendingInternetLead[];
+  verification: LocalVerificationState;
   billingSimulation: string;
   automation: AutomationState;
 }
@@ -134,6 +137,7 @@ function buildDemoState(): LocalAppState {
     importBatches: [],
     connectorLogs: [],
     pendingInternetLeads: [],
+    verification: getEmptyVerificationState(),
     billingSimulation: "active",
     automation: { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null },
   };
@@ -178,6 +182,7 @@ function buildFreshState(): LocalAppState {
     importBatches: [],
     connectorLogs: [],
     pendingInternetLeads: [],
+    verification: getEmptyVerificationState(),
     billingSimulation: "trial",
     automation: { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null },
   };
@@ -188,6 +193,31 @@ let memoryState: LocalAppState | null = null;
 function envDemoEnabled(): boolean {
   return process.env.NEXT_PUBLIC_DEMO_MODE === "true"
     || process.env.NEXT_PUBLIC_ENABLE_DEMO_MODE === "true";
+}
+
+function stripDemoFromStored(stored: LocalAppState): LocalAppState {
+  const fresh = buildFreshState();
+  fresh.leads = stored.leads.filter((l) => !l.demoRecord && l.origin !== "demo");
+  fresh.pendingInternetLeads = stored.pendingInternetLeads ?? [];
+  fresh.verification = stored.verification ?? getEmptyVerificationState();
+  fresh.automation = stored.automation ?? fresh.automation;
+  fresh.importBatches = stored.importBatches.filter((b) => !b.demoRecord);
+  fresh.connectorLogs = stored.connectorLogs ?? [];
+  fresh.platformAudit = (stored.platformAudit ?? []).filter(
+    (e) => !e.eventDescription?.toLowerCase().includes("demo")
+  );
+  fresh.notes = stored.notes ?? [];
+  fresh.communicationLogs = stored.communicationLogs ?? [];
+  fresh.followUps = stored.followUps ?? [];
+  fresh.crmAudit = stored.crmAudit ?? [];
+  if (fresh.leads.length > 0) {
+    fresh.dashboard = {
+      ...fresh.dashboard,
+      totalEstateLeads: fresh.leads.length,
+      newLeadsThisWeek: fresh.leads.length,
+    };
+  }
+  return fresh;
 }
 
 export function initializeLocalState(forceDemo?: boolean): LocalAppState {
@@ -207,6 +237,9 @@ export function getLocalState(): LocalAppState {
     if (!memoryState.pendingInternetLeads) {
       memoryState.pendingInternetLeads = [];
     }
+    if (!memoryState.verification) {
+      memoryState.verification = getEmptyVerificationState();
+    }
     return memoryState;
   }
 
@@ -219,7 +252,15 @@ export function getLocalState(): LocalAppState {
       if (!stored.pendingInternetLeads) {
         stored.pendingInternetLeads = [];
       }
-      memoryState = stored;
+      if (!stored.verification) {
+        stored.verification = getEmptyVerificationState();
+      }
+      if (envDemoEnabled() && stored.demoMode) {
+        memoryState = stored;
+      } else {
+        memoryState = stripDemoFromStored(stored);
+        saveLocalState(memoryState);
+      }
       return memoryState;
     }
   }
@@ -242,8 +283,7 @@ export function persistLocalState(): void {
 
 export function hasLocalData(): boolean {
   if (!isLocalPreviewMode()) return envDemoEnabled();
-  const state = getLocalState();
-  return state.demoMode || state.leads.length > 0;
+  return getLocalState().demoMode;
 }
 
 export function isLocalDemoActive(): boolean {

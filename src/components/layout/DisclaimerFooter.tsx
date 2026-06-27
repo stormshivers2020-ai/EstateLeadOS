@@ -12,7 +12,7 @@ const FOOTER_LINKS = [
 
 export function DisclaimerFooter() {
   return (
-    <footer className="border-t border-slate-700/50 bg-slate-900/80 px-6 py-4">
+    <footer className="border-t border-slate-700/50 bg-slate-900/80 px-4 py-4 sm:px-6 safe-area-pb">
       <div className="mx-auto max-w-7xl">
         <nav className="mb-3 flex flex-wrap gap-x-4 gap-y-1">
           {FOOTER_LINKS.map((link) => (

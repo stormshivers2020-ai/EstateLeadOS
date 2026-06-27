@@ -180,3 +180,51 @@ body {
     animation: none;
   }
 }
+
+/* Mobile / touch */
+html {
+  -webkit-text-size-adjust: 100%;
+  width: 100%;
+  max-width: 100%;
+}
+
+body {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: clip;
+}
+
+.app-shell {
+  width: 100%;
+  max-width: 100vw;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.safe-area-pb {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+.touch-target {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+}
+
+.mobile-action-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .mobile-action-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}

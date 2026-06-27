@@ -83,7 +83,7 @@ export function LeadDetailView({
       />
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <div className="space-y-6 xl:col-span-2">
+        <div className="min-w-0 space-y-6 xl:col-span-2">
           {/* Lead Summary */}
           <Card>
             <CardHeader>
@@ -339,7 +339,7 @@ export function LeadDetailView({
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {/* Pipeline Controls */}
           <Card>
             <CardHeader>

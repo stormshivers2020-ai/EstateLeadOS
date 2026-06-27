@@ -22,7 +22,7 @@ export function getRuntimeConfig(): RuntimeConfig {
   const dataProvider = (process.env.NEXT_PUBLIC_DATA_PROVIDER ?? "local") as DataProviderType;
   const appMode = (process.env.NEXT_PUBLIC_APP_MODE ?? "local") as AppRuntimeMode;
   const useSupabase = envBool("NEXT_PUBLIC_USE_SUPABASE", false);
-  const enableDemoMode = envBool("NEXT_PUBLIC_ENABLE_DEMO_MODE", envBool("NEXT_PUBLIC_DEMO_MODE", true));
+  const enableDemoMode = envBool("NEXT_PUBLIC_ENABLE_DEMO_MODE", envBool("NEXT_PUBLIC_DEMO_MODE", false));
   const enableFreshStart = envBool("NEXT_PUBLIC_ENABLE_FRESH_START", true);
 
   const resolvedProvider: DataProviderType =

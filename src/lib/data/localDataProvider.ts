@@ -9,7 +9,7 @@ import type { LeadNote } from "@/lib/types/crm";
 function createLocalProvider(): DataProvider {
   return {
     type: "local",
-    shouldLoadSeedData: () => hasLocalData(),
+    shouldLoadSeedData: () => isLocalDemoActive(),
     isDemoMode: () => isLocalDemoActive(),
     getState: () => getLocalState(),
 

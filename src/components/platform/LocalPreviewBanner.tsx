@@ -11,7 +11,7 @@ export function LocalPreviewBanner() {
           Local Preview Mode
         </Badge>
         <span>
-          Local Preview Mode is active. Production services are not connected. You are viewing EstateLeadOS locally before Supabase, storage, and live data providers are connected.
+          Live mode — no demo records. Add leads via Market Search or automation; data persists in this browser until you clear it.
         </span>
       </div>
     </div>

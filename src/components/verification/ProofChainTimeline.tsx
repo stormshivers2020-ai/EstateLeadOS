@@ -1,0 +1,66 @@
+import type { EvidenceSource, ProofChainStep } from "@/lib/types/verification";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { GitBranch } from "lucide-react";
+
+interface ProofChainTimelineProps {
+  steps: ProofChainStep[];
+  evidenceSources: EvidenceSource[];
+}
+
+const STATUS_COLORS: Record<ProofChainStep["status"], string> = {
+  complete: "border-emerald-600/50 bg-emerald-900/10",
+  partial: "border-amber-600/50 bg-amber-900/10",
+  missing: "border-slate-700/40 bg-slate-900/20",
+  pending_approval: "border-sky-600/50 bg-sky-900/10",
+};
+
+export function ProofChainTimeline({ steps, evidenceSources }: ProofChainTimelineProps) {
+  const evidenceById = new Map(evidenceSources.map((e) => [e.id, e]));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <GitBranch className="h-4 w-4" />
+          Proof Chain
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ol className="relative space-y-0 border-l border-slate-700 pl-4 sm:pl-6">
+          {steps.map((step, index) => (
+            <li key={step.id} className="relative pb-5 last:pb-0 sm:pb-6">
+              <span className="absolute -left-[0.85rem] top-1.5 flex h-3 w-3 rounded-full border-2 border-sky-500 bg-slate-900 sm:-left-[1.35rem]" />
+              <div className={`rounded-lg border p-3 sm:p-3 ${STATUS_COLORS[step.status]}`}>
+                <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+                  <span className="text-xs font-medium text-slate-500">Step {index + 1}</span>
+                  <span className="font-medium text-slate-200">{step.title}</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Badge variant="default">{step.status.replace(/_/g, " ")}</Badge>
+                    {step.confidenceScore != null && (
+                      <Badge variant="info">{step.confidenceScore}%</Badge>
+                    )}
+                  </div>
+                </div>
+                <p className="mt-1 break-words text-sm text-slate-300">{step.description}</p>
+                {step.evidenceIds.length > 0 && (
+                  <ul className="mt-2 space-y-1 text-xs text-slate-400">
+                    {step.evidenceIds.map((eid) => {
+                      const ev = evidenceById.get(eid);
+                      if (!ev) return null;
+                      return (
+                        <li key={eid}>
+                          [{ev.citationNumber}] {ev.sourceName} — {ev.citationLabel}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </CardContent>
+    </Card>
+  );
+}

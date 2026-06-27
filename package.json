@@ -11,6 +11,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run lint && npm run build",
+    "vercel:deploy": "vercel deploy --prod",
+    "vercel:preview": "vercel deploy",
     "db:push": "supabase db push",
     "db:link": "supabase link --project-ref zmsbiiyiztncynbpvctq",
     "prisma:generate": "prisma generate",

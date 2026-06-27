@@ -151,12 +151,12 @@ export function LeadApprovalQueue({ compact = false }: { compact?: boolean }) {
                   )}
                 </div>
               </div>
-              <div className="flex shrink-0 gap-2">
+              <div className="mobile-action-row shrink-0 lg:flex lg:gap-2">
                 <button
                   type="button"
                   disabled={actingId === lead.id}
                   onClick={() => reject(lead.id)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-300 hover:border-red-700/50 hover:text-red-300 disabled:opacity-50"
+                  className="touch-target inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-600 px-3 py-2.5 text-sm text-slate-300 hover:border-red-700/50 hover:text-red-300 disabled:opacity-50 sm:w-auto"
                 >
                   {actingId === lead.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
                   Reject
@@ -165,7 +165,7 @@ export function LeadApprovalQueue({ compact = false }: { compact?: boolean }) {
                   type="button"
                   disabled={actingId === lead.id}
                   onClick={() => approve(lead.id)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-2 text-sm text-white hover:bg-emerald-600 disabled:opacity-50"
+                  className="touch-target inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-2.5 text-sm text-white hover:bg-emerald-600 disabled:opacity-50 sm:w-auto"
                 >
                   {actingId === lead.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                   Approve

@@ -2,6 +2,7 @@ import { getLocalState, persistLocalState } from "@/lib/local/localStateStore";
 import { appendPlatformAudit } from "@/lib/local/localAudit";
 import { getSessionContext } from "@/lib/config/session";
 import { isSupabaseMode } from "@/lib/config/runtime";
+import { persistVerificationForCandidateAsync } from "@/lib/services/verification";
 import {
   approvePendingLead as approvePendingLeadSupabase,
   fetchPendingInternetLeads as fetchPendingSupabase,
@@ -142,6 +143,8 @@ export async function approveInternetLead(pendingId: string): Promise<{ leadId: 
   state.pendingInternetLeads = state.pendingInternetLeads.filter((p) => p.id !== pendingId);
   state.leads = [lead, ...state.leads];
   persistLocalState();
+
+  await persistVerificationForCandidateAsync(lead.id, pending.candidate, pending.searchId);
 
   appendPlatformAudit({
     eventType: "lead_approved",

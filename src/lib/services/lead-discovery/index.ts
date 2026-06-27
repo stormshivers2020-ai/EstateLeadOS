@@ -5,6 +5,7 @@ import { insertPendingInternetLead } from "@/lib/supabase/queries/leads";
 import { runEstateInternetSearch, isInternetSearchConfigured } from "./internet-search";
 import { parseSearchHitsToCandidates } from "./parse-candidates";
 import { queuePendingLocally } from "./approval";
+import { persistVerificationForCandidateAsync } from "@/lib/services/verification";
 import type { InternetLeadDiscoveryResult, InternetLeadSearchInput } from "./types";
 
 export type { InternetLeadDiscoveryResult, InternetLeadSearchInput, PendingInternetLead } from "./types";
@@ -49,6 +50,7 @@ async function queueCandidatesSupabase(
     });
 
     if (!lead) continue;
+    await persistVerificationForCandidateAsync(lead.id, candidate, searchId);
     queued.push({
       id: lead.id,
       propertyAddress: lead.propertyAddress,
@@ -114,6 +116,9 @@ export async function discoverLeadsFromInternet(
   } else {
     const before = candidates.length;
     const queued = queuePendingLocally(candidates, searchId);
+    for (const p of queued) {
+      await persistVerificationForCandidateAsync(p.id, p.candidate, searchId);
+    }
     pending = queued.map((p) => ({
       id: p.id,
       propertyAddress: p.candidate.propertyAddress,

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { LocalStateHydrator } from "@/components/platform/LocalStateHydrator";
 import { AppProviders } from "@/components/providers/AppProviders";
 import { APP_NAME, POWERED_BY, TAGLINE } from "@/lib/constants/brand";
@@ -12,6 +12,12 @@ export const metadata: Metadata = {
   description: TAGLINE,
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -22,7 +28,7 @@ export default function RootLayout({
       lang="en"
       className="h-full antialiased dark"
     >
-      <body className="min-h-full flex flex-col bg-slate-950 text-slate-100">
+      <body className="min-h-[100dvh] w-full max-w-[100vw] overflow-x-clip bg-slate-950 text-slate-100">
         <AppProviders>
           <LocalStateHydrator />
           {children}

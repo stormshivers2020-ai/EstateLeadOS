@@ -1,5 +1,5 @@
 import { getRuntimeConfig, isLocalPreviewMode } from "./runtime";
-import { hasLocalData, isLocalDemoActive } from "@/lib/local/localStateStore";
+import { isLocalDemoActive } from "@/lib/local/localStateStore";
 import { isDemoMode as envDemoFlag } from "./app-mode-legacy";
 
 export type AppMode = "demo" | "fresh_start";
@@ -17,7 +17,7 @@ export function isDemoMode(): boolean {
 
 export function shouldLoadSeedData(): boolean {
   if (isLocalPreviewMode()) {
-    return hasLocalData();
+    return isLocalDemoActive();
   }
   return envDemoFlag();
 }

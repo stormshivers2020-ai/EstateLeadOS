@@ -1,4 +1,5 @@
 import { initializeLocalState, setLocalState, persistLocalState, getLocalState } from "./localStateStore";
+import { clearLocalState } from "./localStorageClient";
 import { appendPlatformAudit } from "./localAudit";
 
 export function resetDemoData(): void {
@@ -13,6 +14,7 @@ export function resetDemoData(): void {
 }
 
 export function clearLocalData(): void {
+  clearLocalState();
   const state = initializeLocalState(false);
   state.demoMode = false;
   setLocalState(state);
