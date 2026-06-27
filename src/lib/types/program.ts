@@ -69,7 +69,8 @@ export type ReviewQueueType =
   | "buyer_review_ready"
   | "payout_readiness_review"
   | "rejected_bad_match"
-  | "needs_manual_research";
+  | "needs_manual_research"
+  | "attorney_review_needed";
 
 export type ProgramRunAction =
   | "find_government_leads"
@@ -247,6 +248,7 @@ export const REVIEW_QUEUE_LABELS: Record<ReviewQueueType, string> = {
   payout_readiness_review: "Payout Readiness Review",
   rejected_bad_match: "Rejected / Bad Match",
   needs_manual_research: "Needs Manual Research",
+  attorney_review_needed: "Attorney Review Needed",
 };
 
 export const ASSIGNMENT_STATUS_LABELS: Record<AssignmentReadinessStatus, string> = {

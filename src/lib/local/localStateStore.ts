@@ -103,6 +103,12 @@ export interface LocalAppState {
   assignmentReadiness: import("@/lib/types/program").AssignmentReadiness[];
   reviewQueueItems: import("@/lib/types/program").ReviewQueueItem[];
   packetPrintLogs: import("@/lib/types/program").PacketPrintLog[];
+  attorneyReviews: import("@/lib/types/distribution").AttorneyReview[];
+  attorneyCompensation: import("@/lib/types/distribution").AttorneyCompensation[];
+  distributionPackets: import("@/lib/types/distribution").DistributionPacket[];
+  emailDistributions: import("@/lib/types/distribution").EmailDistribution[];
+  externalRecipients: import("@/lib/types/distribution").ExternalRecipient[];
+  distributionAuditLogs: import("@/lib/types/distribution").DistributionAuditLog[];
   billingSimulation: string;
   automation: AutomationState;
 }
@@ -165,6 +171,12 @@ function buildDemoState(): LocalAppState {
     assignmentReadiness: [],
     reviewQueueItems: [],
     packetPrintLogs: [],
+    attorneyReviews: [],
+    attorneyCompensation: [],
+    distributionPackets: [],
+    emailDistributions: [],
+    externalRecipients: [],
+    distributionAuditLogs: [],
     billingSimulation: "active",
     automation: { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null },
   };
@@ -223,6 +235,12 @@ function buildFreshState(): LocalAppState {
     assignmentReadiness: [],
     reviewQueueItems: [],
     packetPrintLogs: [],
+    attorneyReviews: [],
+    attorneyCompensation: [],
+    distributionPackets: [],
+    emailDistributions: [],
+    externalRecipients: [],
+    distributionAuditLogs: [],
     billingSimulation: "trial",
     automation: { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null },
   };
@@ -255,6 +273,12 @@ function stripDemoFromStored(stored: LocalAppState): LocalAppState {
   fresh.assignmentReadiness = stored.assignmentReadiness ?? [];
   fresh.reviewQueueItems = stored.reviewQueueItems ?? [];
   fresh.packetPrintLogs = stored.packetPrintLogs ?? [];
+  fresh.attorneyReviews = stored.attorneyReviews ?? [];
+  fresh.attorneyCompensation = stored.attorneyCompensation ?? [];
+  fresh.distributionPackets = stored.distributionPackets ?? [];
+  fresh.emailDistributions = stored.emailDistributions ?? [];
+  fresh.externalRecipients = stored.externalRecipients ?? [];
+  fresh.distributionAuditLogs = stored.distributionAuditLogs ?? [];
   fresh.automation = stored.automation ?? fresh.automation;
   fresh.importBatches = stored.importBatches.filter((b) => !b.demoRecord);
   fresh.connectorLogs = stored.connectorLogs ?? [];
@@ -316,6 +340,12 @@ export function getLocalState(): LocalAppState {
     if (!memoryState.assignmentReadiness) memoryState.assignmentReadiness = [];
     if (!memoryState.reviewQueueItems) memoryState.reviewQueueItems = [];
     if (!memoryState.packetPrintLogs) memoryState.packetPrintLogs = [];
+    if (!memoryState.attorneyReviews) memoryState.attorneyReviews = [];
+    if (!memoryState.attorneyCompensation) memoryState.attorneyCompensation = [];
+    if (!memoryState.distributionPackets) memoryState.distributionPackets = [];
+    if (!memoryState.emailDistributions) memoryState.emailDistributions = [];
+    if (!memoryState.externalRecipients) memoryState.externalRecipients = [];
+    if (!memoryState.distributionAuditLogs) memoryState.distributionAuditLogs = [];
     return memoryState;
   }
 

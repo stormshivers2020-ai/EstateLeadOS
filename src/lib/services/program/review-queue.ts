@@ -2,7 +2,8 @@ import { getSessionContext } from "@/lib/config/session";
 import { getFullLeadByIdSync } from "@/lib/services/crm";
 import { getPipelineItems } from "@/lib/services/pipeline/local-store";
 import type { ReviewQueueItem, ReviewQueueType } from "@/lib/types/program";
-import { getProgramPackets } from "./local-store";
+import { getProgramPackets } from "@/lib/services/program/local-store";
+import { getAttorneyReview } from "@/lib/services/distribution/local-store";
 import { getRequiredDocuments } from "./local-store";
 import { getAssignmentReadiness } from "./local-store";
 import { upsertReviewQueueItem, removeReviewQueueItem, getReviewQueueItems } from "./local-store";
@@ -79,6 +80,19 @@ export function rebuildReviewQueue(): ReviewQueueItem[] {
         priority: 35,
         nextAction: "Resolve missing documents",
         missingDocumentCount: missing.length,
+      }));
+    }
+  }
+
+  // Attorney review needed
+  for (const leadId of new Set(getProgramPackets().map((p) => p.leadId))) {
+    const ar = getAttorneyReview(leadId);
+    if (ar && !["approved", "approved_with_notes"].includes(ar.reviewStatus) && !ar.manualOverrideAcknowledged) {
+      items.push(makeQueueItem(session, {
+        leadId,
+        queueType: "attorney_review_needed",
+        priority: 15,
+        nextAction: "Complete attorney review or upload reviewed file",
       }));
     }
   }
