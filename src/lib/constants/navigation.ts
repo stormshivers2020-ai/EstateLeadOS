@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Wand2,
   Zap,
+  Landmark,
   type LucideIcon,
 } from "lucide-react";
 
@@ -44,6 +45,14 @@ export const MAIN_NAVIGATION: NavItem[] = [
     icon: LayoutDashboard,
     section: "Command Center",
     description: "SCS Nova operational overview and next actions",
+  },
+  {
+    id: "government-pipeline",
+    label: "Government Pipeline",
+    href: "/government-pipeline",
+    icon: Landmark,
+    section: "Lead Intelligence",
+    description: "County-by-county official record pipeline — Maryland proof engine",
   },
   {
     id: "market-search",

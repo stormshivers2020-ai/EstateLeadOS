@@ -25,6 +25,7 @@ import type { PlatformAuditLog } from "@/lib/types/platform";
 import type { PendingInternetLead } from "@/lib/services/lead-discovery/types";
 import type { LocalVerificationState } from "@/lib/services/verification/verification-state";
 import { getEmptyVerificationState } from "@/lib/services/verification/verification-state";
+import { seedMarylandCountyConfigs } from "@/lib/services/pipeline/local-store";
 import type { AutomationState } from "@/lib/automation/automationTypes";
 import { loadLocalState, saveLocalState, isBrowser, clearLocalState } from "./localStorageClient";
 
@@ -92,6 +93,10 @@ export interface LocalAppState {
   governmentSourcesOnly: boolean;
   rejectedSources: import("@/lib/types/government").RejectedSourceRecord[];
   leadGovernmentStatus: Record<string, string>;
+  countyPipelineConfigs: import("@/lib/types/pipeline").CountyPipelineConfig[];
+  leadPipelineItems: import("@/lib/types/pipeline").LeadPipelineItem[];
+  leadPipelineEvents: import("@/lib/types/pipeline").LeadPipelineEvent[];
+  automationRuns: import("@/lib/types/pipeline").AutomationRunRecord[];
   billingSimulation: string;
   automation: AutomationState;
 }
@@ -144,6 +149,10 @@ function buildDemoState(): LocalAppState {
     governmentSourcesOnly: true,
     rejectedSources: [],
     leadGovernmentStatus: {},
+    countyPipelineConfigs: seedMarylandCountyConfigs("scs-nova"),
+    leadPipelineItems: [],
+    leadPipelineEvents: [],
+    automationRuns: [],
     billingSimulation: "active",
     automation: { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null },
   };
@@ -192,6 +201,10 @@ function buildFreshState(): LocalAppState {
     governmentSourcesOnly: true,
     rejectedSources: [],
     leadGovernmentStatus: {},
+    countyPipelineConfigs: seedMarylandCountyConfigs("scs-nova"),
+    leadPipelineItems: [],
+    leadPipelineEvents: [],
+    automationRuns: [],
     billingSimulation: "trial",
     automation: { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null },
   };
@@ -212,6 +225,12 @@ function stripDemoFromStored(stored: LocalAppState): LocalAppState {
   fresh.governmentSourcesOnly = stored.governmentSourcesOnly ?? true;
   fresh.rejectedSources = stored.rejectedSources ?? [];
   fresh.leadGovernmentStatus = stored.leadGovernmentStatus ?? {};
+  fresh.countyPipelineConfigs = stored.countyPipelineConfigs?.length
+    ? stored.countyPipelineConfigs
+    : seedMarylandCountyConfigs("scs-nova");
+  fresh.leadPipelineItems = stored.leadPipelineItems ?? [];
+  fresh.leadPipelineEvents = stored.leadPipelineEvents ?? [];
+  fresh.automationRuns = stored.automationRuns ?? [];
   fresh.automation = stored.automation ?? fresh.automation;
   fresh.importBatches = stored.importBatches.filter((b) => !b.demoRecord);
   fresh.connectorLogs = stored.connectorLogs ?? [];
@@ -261,6 +280,12 @@ export function getLocalState(): LocalAppState {
     if (!memoryState.leadGovernmentStatus) {
       memoryState.leadGovernmentStatus = {};
     }
+    if (!memoryState.countyPipelineConfigs?.length) {
+      memoryState.countyPipelineConfigs = seedMarylandCountyConfigs("scs-nova");
+    }
+    if (!memoryState.leadPipelineItems) memoryState.leadPipelineItems = [];
+    if (!memoryState.leadPipelineEvents) memoryState.leadPipelineEvents = [];
+    if (!memoryState.automationRuns) memoryState.automationRuns = [];
     return memoryState;
   }
 
