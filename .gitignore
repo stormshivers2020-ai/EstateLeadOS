@@ -1,0 +1,12 @@
+node_modules
+.next
+.DS_Store
+tsconfig.tsbuildinfo
+# Keep environment variables out of version control
+.env
+.env.local
+
+# Cursor MCP config may contain API keys
+.cursor/mcp.json
+
+/src/generated/prisma

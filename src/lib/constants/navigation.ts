@@ -1,0 +1,169 @@
+import {
+  LayoutDashboard,
+  Search,
+  Rss,
+  FileText,
+  FolderOpen,
+  Shield,
+  MessageSquare,
+  Calculator,
+  Users,
+  ClipboardList,
+  History,
+  BarChart3,
+  Settings,
+  ShieldCheck,
+  Wand2,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
+
+export interface NavItem {
+  id: string;
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  description: string;
+  section?: string;
+  adminOnly?: boolean;
+}
+
+export const NAV_SECTIONS = [
+  "Command Center",
+  "Lead Intelligence",
+  "Workflow",
+  "Operations",
+  "Governance",
+] as const;
+
+export const MAIN_NAVIGATION: NavItem[] = [
+  {
+    id: "dashboard",
+    label: "Command Center",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+    section: "Command Center",
+    description: "SCS Nova operational overview and next actions",
+  },
+  {
+    id: "market-search",
+    label: "Market Search",
+    href: "/market-search",
+    icon: Search,
+    section: "Lead Intelligence",
+    description: "Nova Market Console — nationwide market filters",
+  },
+  {
+    id: "lead-feed",
+    label: "Lead Feed",
+    href: "/lead-feed",
+    icon: Rss,
+    section: "Lead Intelligence",
+    description: "Premium lead intelligence feed",
+  },
+  {
+    id: "wizards",
+    label: "Wizards",
+    href: "/wizards",
+    icon: Wand2,
+    section: "Workflow",
+    description: "Nova Guided Workflow — intake through assignment",
+  },
+  {
+    id: "automation",
+    label: "Automation",
+    href: "/automation",
+    icon: Zap,
+    section: "Workflow",
+    description: "Nova Automation Control Layer — supervised processing",
+  },
+  {
+    id: "state-deal-kits",
+    label: "State Deal Kits",
+    href: "/state-deal-kits",
+    icon: FileText,
+    section: "Workflow",
+    description: "State-specific workflows and checklists",
+  },
+  {
+    id: "documents",
+    label: "Document Center",
+    href: "/documents",
+    icon: FolderOpen,
+    section: "Operations",
+    description: "Nova Document Room — packets and templates",
+  },
+  {
+    id: "compliance",
+    label: "Compliance Center",
+    href: "/compliance",
+    icon: Shield,
+    section: "Operations",
+    description: "Nova Compliance Layer — risk and acknowledgements",
+  },
+  {
+    id: "outreach",
+    label: "Outreach CRM",
+    href: "/outreach",
+    icon: MessageSquare,
+    section: "Operations",
+    description: "Respectful seller communication command center",
+  },
+  {
+    id: "deal-calculator",
+    label: "Deal Calculator",
+    href: "/deal-calculator",
+    icon: Calculator,
+    section: "Operations",
+    description: "Estimated offer ranges and deal potential",
+  },
+  {
+    id: "buyer-network",
+    label: "Buyer Network",
+    href: "/buyer-network",
+    icon: Users,
+    section: "Operations",
+    description: "Buyer matching and disposition network",
+  },
+  {
+    id: "assignments",
+    label: "Assignment Tracker",
+    href: "/assignments",
+    icon: ClipboardList,
+    section: "Operations",
+    description: "Nova Assignment Command — closing workflow",
+  },
+  {
+    id: "audit-trail",
+    label: "Audit Trail",
+    href: "/audit-trail",
+    icon: History,
+    section: "Governance",
+    description: "Activity and compliance audit history",
+  },
+  {
+    id: "reports",
+    label: "Reports",
+    href: "/reports",
+    icon: BarChart3,
+    section: "Governance",
+    description: "Pipeline, compliance, and performance reports",
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    href: "/settings",
+    icon: Settings,
+    section: "Governance",
+    description: "Account and organization settings",
+  },
+  {
+    id: "admin",
+    label: "SCS Nova Admin Console",
+    href: "/admin",
+    icon: ShieldCheck,
+    section: "Governance",
+    description: "SCS Nova Control Layer — platform governance",
+    adminOnly: true,
+  },
+];

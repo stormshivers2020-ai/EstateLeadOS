@@ -1,0 +1,11 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// After setting DATABASE_URL + DIRECT_URL in .env.local, introspect Supabase tables:
+//   npm run prisma:pull

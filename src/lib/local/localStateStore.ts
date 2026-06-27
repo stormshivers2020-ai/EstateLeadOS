@@ -1,0 +1,252 @@
+import { isLocalPreviewMode } from "@/lib/config/runtime";
+import { DEMO_DASHBOARD_METRICS, FRESH_START_DASHBOARD_METRICS } from "@/lib/seed/demo-dashboard";
+import {
+  DEMO_FULL_LEADS, DEMO_COMMUNICATION_LOGS, DEMO_FOLLOW_UPS, DEMO_DNC_RECORDS,
+  DEMO_NOTES, DEMO_CRM_AUDIT, DEMO_BLOCKED_TEMPLATE_EXAMPLE,
+} from "@/lib/seed/demo-crm";
+import {
+  DEMO_DOCUMENT_RECORDS, DEMO_LEAD_PACKETS, DEMO_UPLOADED_DOCUMENTS,
+  DEMO_ATTORNEY_REVIEW_QUEUE, DEMO_DOCUMENT_AUDIT,
+} from "@/lib/seed/demo-documents";
+import {
+  DEMO_COUNTIES, DEMO_WORKFLOW_BLOCKERS, DEMO_ACKNOWLEDGEMENTS, DEMO_COMPLIANCE_AUDIT, DEMO_LEAD_COMPLIANCE,
+} from "@/lib/seed/demo-compliance";
+import {
+  DEMO_BUYERS, DEMO_BUYER_MATCHES, DEMO_ASSIGNMENTS, DEMO_DEAL_CALCULATIONS,
+} from "@/lib/seed/demo-deal-workflow";
+import {
+  DEMO_ORGANIZATIONS, DEMO_PLATFORM_USERS, DEMO_MARKET_LICENSES, DEMO_BILLING_ACCOUNTS,
+  DEMO_USAGE_RECORDS, DEMO_WHITE_LABEL, DEMO_API_KEYS, DEMO_SUPPORT_TICKETS,
+  DEMO_PLATFORM_AUDIT, DEMO_SYSTEM_HEALTH, DEMO_SCS_NOVA_SETTINGS,
+} from "@/lib/seed/demo-platform";
+import type { DashboardMetrics } from "@/lib/types";
+import type { FullLeadDetail, CommunicationLog, FollowUpReminder, DoNotContactRecord, LeadNote, CrmAuditEvent } from "@/lib/types/crm";
+import type { PlatformAuditLog } from "@/lib/types/platform";
+import type { PendingInternetLead } from "@/lib/services/lead-discovery/types";
+import type { AutomationState } from "@/lib/automation/automationTypes";
+import { loadLocalState, saveLocalState, isBrowser } from "./localStorageClient";
+
+export interface ImportBatchRecord {
+  id: string;
+  organizationId: string;
+  fileName: string;
+  rowCount: number;
+  importedCount: number;
+  duplicateCount: number;
+  errorCount: number;
+  createdAt: string;
+  demoRecord: boolean;
+}
+
+export interface ConnectorLogRecord {
+  id: string;
+  sourceName: string;
+  status: "success" | "blocked" | "failed" | "credentials_missing" | "county_unsupported" | "no_records";
+  message: string;
+  recordsAdded: number;
+  createdAt: string;
+}
+
+export interface LocalAppState {
+  version: number;
+  demoMode: boolean;
+  dashboard: DashboardMetrics;
+  leads: FullLeadDetail[];
+  communicationLogs: CommunicationLog[];
+  followUps: FollowUpReminder[];
+  dncRecords: DoNotContactRecord[];
+  notes: LeadNote[];
+  crmAudit: CrmAuditEvent[];
+  blockedTemplateExample: typeof DEMO_BLOCKED_TEMPLATE_EXAMPLE | null;
+  documentRecords: typeof DEMO_DOCUMENT_RECORDS;
+  leadPackets: typeof DEMO_LEAD_PACKETS;
+  uploadedDocuments: typeof DEMO_UPLOADED_DOCUMENTS;
+  attorneyQueue: typeof DEMO_ATTORNEY_REVIEW_QUEUE;
+  documentAudit: typeof DEMO_DOCUMENT_AUDIT;
+  counties: typeof DEMO_COUNTIES;
+  blockers: typeof DEMO_WORKFLOW_BLOCKERS;
+  acknowledgements: typeof DEMO_ACKNOWLEDGEMENTS;
+  complianceAudit: typeof DEMO_COMPLIANCE_AUDIT;
+  leadCompliance: typeof DEMO_LEAD_COMPLIANCE;
+  buyers: typeof DEMO_BUYERS;
+  buyerMatches: typeof DEMO_BUYER_MATCHES;
+  assignments: typeof DEMO_ASSIGNMENTS;
+  dealCalculations: typeof DEMO_DEAL_CALCULATIONS;
+  organizations: typeof DEMO_ORGANIZATIONS;
+  platformUsers: typeof DEMO_PLATFORM_USERS;
+  marketLicenses: typeof DEMO_MARKET_LICENSES;
+  billingAccounts: typeof DEMO_BILLING_ACCOUNTS;
+  usageRecords: typeof DEMO_USAGE_RECORDS;
+  whiteLabel: typeof DEMO_WHITE_LABEL;
+  apiKeys: typeof DEMO_API_KEYS;
+  supportTickets: typeof DEMO_SUPPORT_TICKETS;
+  platformAudit: PlatformAuditLog[];
+  systemHealth: typeof DEMO_SYSTEM_HEALTH;
+  scsNovaSettings: typeof DEMO_SCS_NOVA_SETTINGS;
+  importBatches: ImportBatchRecord[];
+  connectorLogs: ConnectorLogRecord[];
+  pendingInternetLeads: PendingInternetLead[];
+  billingSimulation: string;
+  automation: AutomationState;
+}
+
+function clone<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data)) as T;
+}
+
+function buildDemoState(): LocalAppState {
+  return {
+    version: 1,
+    demoMode: true,
+    dashboard: clone(DEMO_DASHBOARD_METRICS),
+    leads: clone(DEMO_FULL_LEADS),
+    communicationLogs: clone(DEMO_COMMUNICATION_LOGS),
+    followUps: clone(DEMO_FOLLOW_UPS),
+    dncRecords: clone(DEMO_DNC_RECORDS),
+    notes: clone(DEMO_NOTES),
+    crmAudit: clone(DEMO_CRM_AUDIT),
+    blockedTemplateExample: clone(DEMO_BLOCKED_TEMPLATE_EXAMPLE),
+    documentRecords: clone(DEMO_DOCUMENT_RECORDS),
+    leadPackets: clone(DEMO_LEAD_PACKETS),
+    uploadedDocuments: clone(DEMO_UPLOADED_DOCUMENTS),
+    attorneyQueue: clone(DEMO_ATTORNEY_REVIEW_QUEUE),
+    documentAudit: clone(DEMO_DOCUMENT_AUDIT),
+    counties: clone(DEMO_COUNTIES),
+    blockers: clone(DEMO_WORKFLOW_BLOCKERS),
+    acknowledgements: clone(DEMO_ACKNOWLEDGEMENTS),
+    complianceAudit: clone(DEMO_COMPLIANCE_AUDIT),
+    leadCompliance: clone(DEMO_LEAD_COMPLIANCE),
+    buyers: clone(DEMO_BUYERS),
+    buyerMatches: clone(DEMO_BUYER_MATCHES),
+    assignments: clone(DEMO_ASSIGNMENTS),
+    dealCalculations: clone(DEMO_DEAL_CALCULATIONS),
+    organizations: clone(DEMO_ORGANIZATIONS),
+    platformUsers: clone(DEMO_PLATFORM_USERS),
+    marketLicenses: clone(DEMO_MARKET_LICENSES),
+    billingAccounts: clone(DEMO_BILLING_ACCOUNTS),
+    usageRecords: clone(DEMO_USAGE_RECORDS),
+    whiteLabel: clone(DEMO_WHITE_LABEL),
+    apiKeys: clone(DEMO_API_KEYS),
+    supportTickets: clone(DEMO_SUPPORT_TICKETS),
+    platformAudit: clone(DEMO_PLATFORM_AUDIT),
+    systemHealth: clone(DEMO_SYSTEM_HEALTH),
+    scsNovaSettings: clone(DEMO_SCS_NOVA_SETTINGS),
+    importBatches: [],
+    connectorLogs: [],
+    pendingInternetLeads: [],
+    billingSimulation: "active",
+    automation: { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null },
+  };
+}
+
+function buildFreshState(): LocalAppState {
+  const demo = buildDemoState();
+  return {
+    ...demo,
+    demoMode: false,
+    dashboard: clone(FRESH_START_DASHBOARD_METRICS),
+    leads: [],
+    communicationLogs: [],
+    followUps: [],
+    dncRecords: [],
+    notes: [],
+    crmAudit: [],
+    blockedTemplateExample: null,
+    documentRecords: [],
+    leadPackets: [],
+    uploadedDocuments: [],
+    attorneyQueue: [],
+    documentAudit: [],
+    counties: [],
+    blockers: [],
+    acknowledgements: [],
+    complianceAudit: [],
+    leadCompliance: [],
+    buyers: [],
+    buyerMatches: [],
+    assignments: [],
+    dealCalculations: [],
+    organizations: [],
+    platformUsers: [],
+    marketLicenses: [],
+    billingAccounts: [],
+    usageRecords: [],
+    whiteLabel: [],
+    apiKeys: [],
+    supportTickets: [],
+    platformAudit: [],
+    importBatches: [],
+    connectorLogs: [],
+    pendingInternetLeads: [],
+    billingSimulation: "trial",
+    automation: { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null },
+  };
+}
+
+let memoryState: LocalAppState | null = null;
+
+function envDemoEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_DEMO_MODE === "true"
+    || process.env.NEXT_PUBLIC_ENABLE_DEMO_MODE === "true";
+}
+
+export function initializeLocalState(forceDemo?: boolean): LocalAppState {
+  const demo = forceDemo ?? envDemoEnabled();
+  memoryState = demo ? buildDemoState() : buildFreshState();
+  if (isBrowser() && isLocalPreviewMode()) {
+    saveLocalState(memoryState);
+  }
+  return memoryState;
+}
+
+export function getLocalState(): LocalAppState {
+  if (memoryState) {
+    if (!memoryState.automation) {
+      memoryState.automation = { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null };
+    }
+    if (!memoryState.pendingInternetLeads) {
+      memoryState.pendingInternetLeads = [];
+    }
+    return memoryState;
+  }
+
+  if (isBrowser() && isLocalPreviewMode()) {
+    const stored = loadLocalState<LocalAppState>();
+    if (stored?.version === 1) {
+      if (!stored.automation) {
+        stored.automation = { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null };
+      }
+      if (!stored.pendingInternetLeads) {
+        stored.pendingInternetLeads = [];
+      }
+      memoryState = stored;
+      return memoryState;
+    }
+  }
+
+  return initializeLocalState();
+}
+
+export function setLocalState(state: LocalAppState): void {
+  memoryState = state;
+  if (isBrowser() && isLocalPreviewMode()) {
+    saveLocalState(state);
+  }
+}
+
+export function persistLocalState(): void {
+  if (memoryState && isBrowser()) {
+    saveLocalState(memoryState);
+  }
+}
+
+export function hasLocalData(): boolean {
+  if (!isLocalPreviewMode()) return envDemoEnabled();
+  const state = getLocalState();
+  return state.demoMode || state.leads.length > 0;
+}
+
+export function isLocalDemoActive(): boolean {
+  if (!isLocalPreviewMode()) return envDemoEnabled();
+  return getLocalState().demoMode;
+}

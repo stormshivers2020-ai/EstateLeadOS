@@ -1,0 +1,47 @@
+{
+  "name": "estate-lead-os",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3001 -H 127.0.0.1",
+    "dev:fresh": "lsof -ti :3001 | xargs kill -9 2>/dev/null; next dev -p 3001 -H 127.0.0.1",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "start:local": "next start -p 3001 -H 127.0.0.1",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run lint && npm run build",
+    "db:push": "supabase db push",
+    "db:link": "supabase link --project-ref zmsbiiyiztncynbpvctq",
+    "prisma:generate": "prisma generate",
+    "prisma:pull": "prisma db pull",
+    "prisma:studio": "prisma studio",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "@supabase/ssr": "^0.10.3",
+    "@supabase/supabase-js": "^2.108.2",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.17.0",
+    "next": "16.2.7",
+    "pg": "^8.22.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.7",
+    "prisma": "^7.8.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,25 @@
+# Supabase local development (optional)
+# Run: npx supabase start
+# Apply migrations: npx supabase db push
+
+project_id = "zmsbiiyiztncynbpvctq"
+
+[api]
+enabled = true
+port = 54321
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3001"
+additional_redirect_urls = ["http://127.0.0.1:3001/**"]
+
+[storage]
+enabled = true
