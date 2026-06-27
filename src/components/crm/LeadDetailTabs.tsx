@@ -6,23 +6,39 @@ import type { LeadVerificationBundle } from "@/lib/types/verification";
 import { PacketBuilderPanel } from "@/components/program/PacketBuilderPanel";
 import { AttorneyReviewPanel } from "@/components/distribution/AttorneyReviewPanel";
 import { EmailDistributionPanel } from "@/components/distribution/EmailDistributionPanel";
+import { FinancialPanel } from "@/components/analytics/FinancialPanel";
+import { ProcessStepMap } from "@/components/analytics/ProcessStepMap";
+import type { getLeadFinancials } from "@/lib/services/analytics";
 import { cn } from "@/lib/utils/cn";
+import { Badge } from "@/components/ui/Badge";
+
+type LeadFinancialData = ReturnType<typeof getLeadFinancials>;
 
 interface LeadDetailTabsProps {
   leadId: string;
   verificationBundle: LeadVerificationBundle | null;
+  financialData: LeadFinancialData;
   overview: ReactNode;
 }
 
 export function LeadDetailTabs({
   leadId,
   verificationBundle,
+  financialData,
   overview,
 }: LeadDetailTabsProps) {
-  const [tab, setTab] = useState<"overview" | "evidence" | "packet" | "attorney" | "email">("overview");
+  const [tab, setTab] = useState<"overview" | "evidence" | "financials" | "packet" | "attorney" | "email">("overview");
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--nova-gold-muted)] bg-black/20 px-3 py-2 text-xs">
+        <span className="text-slate-500">Current Process Step:</span>
+        <Badge variant="warning">Step {financialData.currentStep}</Badge>
+        <span className="text-slate-400">
+          {financialData.processSteps.find((s) => s.stepNumber === financialData.currentStep)?.stepName ?? "In progress"}
+        </span>
+      </div>
+
       <div
         className="-mx-1 flex gap-1 overflow-x-auto border-b border-slate-700/50 pb-2 scrollbar-none"
         role="tablist"
@@ -33,6 +49,9 @@ export function LeadDetailTabs({
         </TabButton>
         <TabButton active={tab === "evidence"} onClick={() => setTab("evidence")}>
           Evidence
+        </TabButton>
+        <TabButton active={tab === "financials"} onClick={() => setTab("financials")}>
+          Financials
         </TabButton>
         <TabButton active={tab === "packet"} onClick={() => setTab("packet")}>
           Packet & Archive
@@ -47,8 +66,13 @@ export function LeadDetailTabs({
       <div role="tabpanel">
         {tab === "overview" ? overview : tab === "evidence" ? (
           <LeadVerificationTab leadId={leadId} initialBundle={verificationBundle} />
+        ) : tab === "financials" ? (
+          <FinancialPanel leadId={leadId} data={financialData} />
         ) : tab === "packet" ? (
-          <PacketBuilderPanel leadId={leadId} />
+          <div className="space-y-4">
+            <ProcessStepMap steps={financialData.processSteps} currentStep={financialData.currentStep} leadId={leadId} compact />
+            <PacketBuilderPanel leadId={leadId} />
+          </div>
         ) : tab === "attorney" ? (
           <AttorneyReviewPanel leadId={leadId} />
         ) : (

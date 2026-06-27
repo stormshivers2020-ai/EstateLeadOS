@@ -6,7 +6,9 @@ import { Badge } from "@/components/ui/Badge";
 import { DashboardQuickActions } from "./DashboardQuickActions";
 import { DashboardAutomationBar } from "@/components/automation/DashboardAutomationBar";
 import { NextBestActions } from "./NextBestActions";
+import { CommandCenterFinancial } from "./CommandCenterFinancial";
 import { ScsNovaBrand } from "@/components/brand/ScsNovaBrand";
+import type { CommandCenterAnalytics } from "@/lib/services/analytics";
 import { PROFIT_DISCLAIMER } from "@/lib/constants/compliance-copy";
 import { EMPTY_STATES } from "@/lib/constants/microcopy";
 import { shouldLoadSeedData } from "@/lib/config/app-mode";
@@ -22,9 +24,10 @@ function formatCurrency(value: number): string {
 
 interface DashboardWidgetsProps {
   metrics: DashboardMetrics;
+  analytics: CommandCenterAnalytics;
 }
 
-export function DashboardWidgets({ metrics }: DashboardWidgetsProps) {
+export function DashboardWidgets({ metrics, analytics }: DashboardWidgetsProps) {
   const isDemo = shouldLoadSeedData();
   const healthVariant = metrics.dataSourceHealth === "healthy" ? "success" : metrics.dataSourceHealth === "degraded" ? "warning" : "danger";
   const systemVariant = metrics.systemStatus === "operational" ? "success" : "warning";
@@ -62,6 +65,8 @@ export function DashboardWidgets({ metrics }: DashboardWidgetsProps) {
         </Card>
       )}
 
+      <CommandCenterFinancial analytics={analytics} />
+
       <SectionHeader
         title="Nova Executive Snapshot"
         subtitle="Your nationwide acquisition operation at a glance"
@@ -79,7 +84,7 @@ export function DashboardWidgets({ metrics }: DashboardWidgetsProps) {
         <div className="lg:col-span-2 space-y-6">
           <SectionHeader title="Deal Pipeline" subtitle="Estimated spread — user-entered assumptions, not guaranteed profit" />
           <div className="grid gap-4 sm:grid-cols-2">
-            <ExecutiveMetricCard title="Estimated Pipeline Spread" value={formatCurrency(metrics.estimatedPipelineSpread)} explanation="Projected assignment range based on active pipeline" href="/reports" icon={DollarSign} trend="neutral" trendLabel="Based on assumptions" />
+            <ExecutiveMetricCard title="Estimated Pipeline Spread" value={formatCurrency(metrics.estimatedPipelineSpread)} explanation="Projected assignment range based on active pipeline" href="/analytics/profit-loss" icon={DollarSign} trend="neutral" trendLabel="Based on assumptions" />
             <ExecutiveMetricCard title="Active Assignments" value={metrics.assignmentSummary.active} explanation={`${metrics.assignmentSummary.closing} closing · ${metrics.assignmentSummary.closed} closed`} href="/assignments" icon={ClipboardList} />
             <ExecutiveMetricCard title="Documents Pending" value={metrics.documentsPending} explanation="Required packets incomplete" href="/documents" icon={FileText} />
             <ExecutiveMetricCard title="Follow-Ups Due" value={metrics.followUpsDue} explanation="Scheduled outreach today" href="/outreach" icon={Calendar} />

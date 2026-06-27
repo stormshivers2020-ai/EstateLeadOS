@@ -26,6 +26,18 @@ import type { PendingInternetLead } from "@/lib/services/lead-discovery/types";
 import type { LocalVerificationState } from "@/lib/services/verification/verification-state";
 import { getEmptyVerificationState } from "@/lib/services/verification/verification-state";
 import { seedMarylandCountyConfigs } from "@/lib/services/pipeline/local-store";
+import type {
+  AccruedMoneyRecord,
+  DealFinancials,
+  ExecutiveReport,
+  ExpenseRecord,
+  ProcessStepStatusRecord,
+} from "@/lib/types/analytics";
+import {
+  DEMO_ACCRUED_MONEY,
+  DEMO_DEAL_FINANCIALS,
+  DEMO_EXPENSE_RECORDS,
+} from "@/lib/seed/demo-analytics";
 import type { AutomationState } from "@/lib/automation/automationTypes";
 import { loadLocalState, saveLocalState, isBrowser, clearLocalState } from "./localStorageClient";
 
@@ -109,6 +121,11 @@ export interface LocalAppState {
   emailDistributions: import("@/lib/types/distribution").EmailDistribution[];
   externalRecipients: import("@/lib/types/distribution").ExternalRecipient[];
   distributionAuditLogs: import("@/lib/types/distribution").DistributionAuditLog[];
+  dealFinancials: DealFinancials[];
+  expenseRecords: ExpenseRecord[];
+  accruedMoneyRecords: AccruedMoneyRecord[];
+  processStepStatuses: ProcessStepStatusRecord[];
+  executiveReports: ExecutiveReport[];
   billingSimulation: string;
   automation: AutomationState;
 }
@@ -177,6 +194,11 @@ function buildDemoState(): LocalAppState {
     emailDistributions: [],
     externalRecipients: [],
     distributionAuditLogs: [],
+    dealFinancials: clone(DEMO_DEAL_FINANCIALS),
+    expenseRecords: clone(DEMO_EXPENSE_RECORDS),
+    accruedMoneyRecords: clone(DEMO_ACCRUED_MONEY),
+    processStepStatuses: [],
+    executiveReports: [],
     billingSimulation: "active",
     automation: { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null },
   };
@@ -241,6 +263,11 @@ function buildFreshState(): LocalAppState {
     emailDistributions: [],
     externalRecipients: [],
     distributionAuditLogs: [],
+    dealFinancials: [],
+    expenseRecords: [],
+    accruedMoneyRecords: [],
+    processStepStatuses: [],
+    executiveReports: [],
     billingSimulation: "trial",
     automation: { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null },
   };
@@ -279,6 +306,11 @@ function stripDemoFromStored(stored: LocalAppState): LocalAppState {
   fresh.emailDistributions = stored.emailDistributions ?? [];
   fresh.externalRecipients = stored.externalRecipients ?? [];
   fresh.distributionAuditLogs = stored.distributionAuditLogs ?? [];
+  fresh.dealFinancials = stored.dealFinancials ?? [];
+  fresh.expenseRecords = stored.expenseRecords ?? [];
+  fresh.accruedMoneyRecords = stored.accruedMoneyRecords ?? [];
+  fresh.processStepStatuses = stored.processStepStatuses ?? [];
+  fresh.executiveReports = stored.executiveReports ?? [];
   fresh.automation = stored.automation ?? fresh.automation;
   fresh.importBatches = stored.importBatches.filter((b) => !b.demoRecord);
   fresh.connectorLogs = stored.connectorLogs ?? [];
@@ -346,6 +378,11 @@ export function getLocalState(): LocalAppState {
     if (!memoryState.emailDistributions) memoryState.emailDistributions = [];
     if (!memoryState.externalRecipients) memoryState.externalRecipients = [];
     if (!memoryState.distributionAuditLogs) memoryState.distributionAuditLogs = [];
+    if (!memoryState.dealFinancials) memoryState.dealFinancials = [];
+    if (!memoryState.expenseRecords) memoryState.expenseRecords = [];
+    if (!memoryState.accruedMoneyRecords) memoryState.accruedMoneyRecords = [];
+    if (!memoryState.processStepStatuses) memoryState.processStepStatuses = [];
+    if (!memoryState.executiveReports) memoryState.executiveReports = [];
     return memoryState;
   }
 

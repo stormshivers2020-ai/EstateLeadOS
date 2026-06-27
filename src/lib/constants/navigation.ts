@@ -18,6 +18,7 @@ import {
   Landmark,
   Archive,
   ListChecks,
+  LineChart,
   type LucideIcon,
 } from "lucide-react";
 
@@ -167,6 +168,14 @@ export const MAIN_NAVIGATION: NavItem[] = [
     icon: History,
     section: "Governance",
     description: "Activity and compliance audit history",
+  },
+  {
+    id: "analytics",
+    label: "Analytics Center",
+    href: "/analytics",
+    icon: LineChart,
+    section: "Governance",
+    description: "Financial command center — P/L, accrued money, pipeline, and executive reports",
   },
   {
     id: "reports",

@@ -5,6 +5,7 @@ import { LeadDetailTabs } from "@/components/crm/LeadDetailTabs";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { isDemoMode } from "@/lib/config/app-mode";
 import { getLeadVerificationBundle } from "@/lib/services/verification";
+import { getLeadFinancials } from "@/lib/services/analytics";
 import {
   getCountyProfile,
   getLeadComplianceContext,
@@ -58,6 +59,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
     ownerName: lead.ownerName,
     parcelId: lead.parcelId,
   });
+  const financialData = getLeadFinancials(id);
 
   const checkResult = complianceContext
     ? runLeadComplianceCheck({
@@ -89,6 +91,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
       <LeadDetailTabs
         leadId={id}
         verificationBundle={verificationBundle}
+        financialData={financialData}
         overview={
           <LeadDetailView
             lead={lead}
