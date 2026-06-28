@@ -28,7 +28,9 @@ export function seedMarylandCountyConfigs(orgId: string): CountyPipelineConfig[]
     automationMode: "supervised",
     isPaused: false,
     isProofEngine: county === "Harford",
-    activeSourceIds: [],
+    activeSourceIds: county === "Harford"
+      ? ["md-sdat", "md-register-wills", "md-harford-gis", "md-harford-tax"]
+      : [],
     signalsFound: 0,
     estateMatches: 0,
     propertyMatches: 0,

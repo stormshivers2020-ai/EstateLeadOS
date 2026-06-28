@@ -238,9 +238,11 @@ export function getCommandCenterAnalytics() {
       lead,
       assignment: assignments.find((a) => a.leadId === lead.id),
       packets: fin.programPackets.filter((p) => p.leadId === lead.id),
+      archives: fin.leadArchives.filter((a) => a.leadId === lead.id),
       attorneyReview: fin.attorneyReviews.find((r) => r.leadId === lead.id),
       distributionPacket: fin.distributionPackets.find((p) => p.leadId === lead.id),
       emailDistribution: fin.emailDistributions.find((e) => e.leadId === lead.id),
+      packetPrintCount: fin.packetPrintLogs.filter((l) => l.leadId === lead.id).length,
     };
     allStepRecords.push(...buildLeadProcessSteps(ctx, session.organizationId));
   }
@@ -548,9 +550,11 @@ export function getLeadFinancials(leadId: string) {
     lead,
     assignment: assignments.find((a) => a.leadId === leadId),
     packets: fin.programPackets.filter((p) => p.leadId === leadId),
+    archives: fin.leadArchives.filter((a) => a.leadId === leadId),
     attorneyReview: fin.attorneyReviews.find((r) => r.leadId === leadId),
     distributionPacket: fin.distributionPackets.find((p) => p.leadId === leadId),
     emailDistribution: fin.emailDistributions.find((e) => e.leadId === leadId),
+    packetPrintCount: fin.packetPrintLogs.filter((l) => l.leadId === leadId).length,
   };
 
   const processSteps = lead ? buildLeadProcessSteps(ctx, getSessionContext().organizationId) : [];

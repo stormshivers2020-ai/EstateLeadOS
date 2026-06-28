@@ -228,6 +228,9 @@ function buildVerificationFromGovernmentRecord(
   if (gov.estateCaseNumber) matchedFields.estate_case_number = gov.estateCaseNumber;
   if (gov.deedReference) matchedFields.deed_reference = gov.deedReference;
   if (gov.personalRepresentative) matchedFields.personal_representative = gov.personalRepresentative;
+  if (gov.sourceCertaintyScore != null) matchedFields.source_certainty_score = String(gov.sourceCertaintyScore);
+  if (gov.contentHash) matchedFields.content_hash = gov.contentHash;
+  if (gov.fetchMethod) matchedFields.fetch_method = gov.fetchMethod;
 
   const recordHit: RecordHit = {
     id: uid("rh"),
@@ -258,9 +261,11 @@ function buildVerificationFromGovernmentRecord(
       retrievedAt: now,
       screenshotUrl,
       sourceExcerpt: gov.snippet,
-      sourceHash: hashExcerpt(gov.snippet),
-      confidenceScore: gov.confidenceScore,
+      sourceHash: gov.contentHash ?? hashExcerpt(gov.snippet),
+      confidenceScore: gov.sourceCertaintyScore ?? gov.confidenceScore,
       matchedFields,
+      jurisdictionState: candidate.state ?? null,
+      jurisdictionCounty: candidate.county ?? null,
       createdAt: now,
     },
   ];
@@ -371,6 +376,22 @@ function buildVerificationFromGovernmentRecord(
   const propertyMedia: PropertyMedia[] = [];
   const mapType =
     /gis|parcel/i.test(gov.sourceType) ? "parcel_map" : /assessment|tax|property/i.test(gov.sourceType) ? "assessor_photo" : "parcel_map";
+
+  if (gov.mediaUrl) {
+    propertyMedia.push({
+      id: uid("media"),
+      organizationId,
+      leadId,
+      propertyId: null,
+      mediaType: /gis/i.test(gov.sourceType) ? "county_gis_photo" : mapType,
+      mediaUrl: gov.mediaUrl,
+      sourceName: gov.sourceName,
+      sourceUrl: gov.sourceUrl,
+      attribution: `${gov.sourceName} — official government visual`,
+      retrievedAt: now,
+      createdAt: now,
+    });
+  }
 
   propertyMedia.push({
     id: uid("media"),

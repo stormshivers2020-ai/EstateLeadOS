@@ -17,8 +17,10 @@ import {
   Zap,
   Landmark,
   Archive,
+  ArchiveRestore,
   ListChecks,
   LineChart,
+  Route,
   type LucideIcon,
 } from "lucide-react";
 
@@ -41,6 +43,14 @@ export const NAV_SECTIONS = [
 ] as const;
 
 export const MAIN_NAVIGATION: NavItem[] = [
+  {
+    id: "deal-command",
+    label: "Build Your First Packet",
+    href: "/deal-command?p=0",
+    icon: Route,
+    section: "Command Center",
+    description: "Guided walkthrough of all 26 steps from county selection through final archive",
+  },
   {
     id: "dashboard",
     label: "Command Center",
@@ -107,11 +117,19 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: "archive",
-    label: "Archive",
+    label: "Archives",
     href: "/archive",
     icon: Archive,
     section: "Operations",
-    description: "Versioned lead packet archive — printable and review-ready",
+    description: "Initial Review Archive (Step 14) and Final Attorney-Reviewed Archive (Step 19)",
+  },
+  {
+    id: "final-archive",
+    label: "Final Archive",
+    href: "/archive/final",
+    icon: ArchiveRestore,
+    section: "Operations",
+    description: "Attorney-reviewed files and final outcome (Steps 19 & 26)",
   },
   {
     id: "documents",

@@ -93,9 +93,12 @@ export type AttorneyUploadCategory =
   | "attorney_reviewed_packet"
   | "attorney_approval_letter"
   | "attorney_redlines"
+  | "attorney_comments"
   | "attorney_fee_agreement"
   | "attorney_engagement_agreement"
   | "title_company_notes"
+  | "revised_draft_documents"
+  | "signed_documents"
   | "disclosure_checklist"
   | "revised_buyer_packet"
   | "revised_assignment_packet"
@@ -159,6 +162,7 @@ export interface AttorneyCompensation {
   compensationType: CompensationType;
   proposedPercentage?: number | null;
   proposedFlatFee?: number | null;
+  proposedHourlyFee?: number | null;
   paidFromAssignmentFee: boolean;
   paymentDueCondition: PaymentDueCondition;
   writtenAgreementUploaded: boolean;
@@ -180,6 +184,7 @@ export interface DistributionPacket {
   organizationId: string;
   leadId: string;
   sourcePacketId?: string | null;
+  finalArchiveId?: string | null;
   attorneyReviewId?: string | null;
   packetType: DistributionPacketType;
   packetStatus: DistributionPacketStatus;
@@ -189,6 +194,7 @@ export interface DistributionPacket {
   userApprovalStatus: string;
   approvedToSendAt?: string | null;
   approvedBy?: string | null;
+  hideInternalProfitNotes?: boolean;
   printableHtml: string;
   pdfUrl?: string | null;
   createdAt: string;
@@ -214,6 +220,8 @@ export interface EmailDistribution {
   sentAt?: string | null;
   failureReason?: string | null;
   userApprovedPreview: boolean;
+  followUpScheduledAt?: string | null;
+  distributionRecordArchived?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -300,3 +308,36 @@ export const DISTRIBUTION_TYPE_LABELS: Record<DistributionPacketType, string> = 
 
 export const DISTRIBUTION_PACKET_WARNING =
   "This packet is for opportunity review only. Confirm all records, ownership, title, disclosures, and assignment requirements with qualified professionals before proceeding.";
+
+export const ATTORNEY_FEE_STATUS_LABELS: Record<AttorneyFeeStatus, string> = {
+  not_discussed: "Not Discussed",
+  proposed: "Proposed",
+  awaiting_written_agreement: "Awaiting Written Agreement",
+  written_agreement_uploaded: "Written Agreement Uploaded",
+  approved_by_attorney: "Approved By Attorney",
+  rejected: "Rejected",
+  needs_revision: "Needs Revision",
+  not_applicable: "Not Applicable",
+};
+
+export const COMPENSATION_TYPE_LABELS: Record<CompensationType, string> = {
+  not_set: "Not Set",
+  flat_fee: "Flat Fee",
+  hourly: "Hourly",
+  contingent_percentage: "Contingent Percentage",
+  hybrid: "Hybrid",
+  other: "Other",
+  not_applicable: "Not Applicable",
+};
+
+export const PAYMENT_DUE_CONDITION_LABELS: Record<PaymentDueCondition, string> = {
+  due_now: "Due Now",
+  due_after_review: "Due After Review",
+  due_at_closing: "Due At Closing",
+  due_from_assignment_fee_if_closing: "Due From Assignment Fee If Closing Occurs",
+  other_written_agreement: "Other Written Agreement",
+  not_set: "Not Set",
+};
+
+export const ATTORNEY_NO_FEE_RECOMMENDATION =
+  "EstateLeadOS does not recommend attorney compensation percentages or fee amounts. Enter only terms discussed directly with your attorney.";

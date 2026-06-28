@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { AnalyticsPageShell } from "@/components/analytics/AnalyticsPageShell";
 import { DistributionAnalyticsClient } from "@/components/analytics/pages/DistributionAnalyticsClient";
+import { DealCommandStepperSection } from "@/components/deal-command/DealCommandWizardClient";
 import { getCommandCenterAnalytics } from "@/lib/services/analytics";
 import { canAccessAdminConsole } from "@/lib/engines/permission-guard";
 import { getSessionContext } from "@/lib/config/session";
@@ -16,6 +17,9 @@ export default async function DistributionAnalyticsPage() {
   return (
     <AppShell title="Buyer / Realtor Distribution" subtitle="Approved sends and buyer response analytics" isAdmin={canAccessAdminConsole(session.role)}>
       <AnalyticsPageShell>
+        <div className="mb-6">
+          <DealCommandStepperSection currentStep={20} sectionSteps={[20, 21, 22, 23]} />
+        </div>
         <DistributionAnalyticsClient data={data} />
       </AnalyticsPageShell>
     </AppShell>

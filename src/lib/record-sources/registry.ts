@@ -1,12 +1,6 @@
 import type { NormalizedGovernmentRecord } from "./types";
 import { classifySourceUrl } from "@/lib/services/government/source-filter";
-
-const ADDRESS_PATTERN =
-  /\d{1,6}\s+[\w\s.'#-]+(?:\b(?:St|Street|Ave|Avenue|Rd|Road|Dr|Drive|Ln|Lane|Blvd|Way|Ct|Court|Pl|Place)\b)[,\s]+[\w\s.'-]+,?\s*[A-Z]{2}\b/i;
-const DECEDENT = /(?:estate of|decedent|in re:?\s*(?:the\s+)?estate of)\s+([A-Za-z][A-Za-z\s.'-]{1,60})/i;
-const PR = /(?:personal representative|executor|administrator)[:\s]+([A-Za-z][A-Za-z\s.'-]{1,60})/i;
-const CASE = /\b(?:estate|case|file)\s*(?:no\.?|#)?\s*([A-Z0-9-]{4,})/i;
-const DEED = /\b(?:deed|instrument|lib|book)\s*(?:no\.?|#)?\s*([A-Z0-9-]{3,})/i;
+import { extractRecordFields } from "@/lib/services/government/field-extractor";
 
 export function parseHitToNormalizedRecord(
   hit: { title: string; url: string; content: string },
@@ -15,19 +9,32 @@ export function parseHitToNormalizedRecord(
     sourceType: string;
     jurisdictionState: string;
     jurisdictionCounty?: string | null;
+    trustLevel?: "official" | "official_secondary" | "enrichment" | "rejected";
   },
-  market: { state: string; county: string }
+  market: { state: string; county: string },
+  enriched?: {
+    mergedText?: string;
+    liveFetchOk?: boolean;
+    contentHash?: string | null;
+    fetchMethod?: "live_http" | "snippet_only" | "arcgis_api";
+  }
 ): NormalizedGovernmentRecord | null {
   const classification = classifySourceUrl(hit.url, true);
   if (!classification.allowed) return null;
 
-  const blob = `${hit.title}. ${hit.content}`;
-  const propertyAddress = blob.match(ADDRESS_PATTERN)?.[0]?.trim() ?? null;
-  const decedent = blob.match(DECEDENT)?.[1]?.trim() ?? null;
-  const pr = blob.match(PR)?.[1]?.trim() ?? null;
-  const hasEstate = /probate|estate|decedent|register of wills/i.test(blob);
+  const blob = enriched?.mergedText ?? `${hit.title}. ${hit.content}`;
+  const fields = extractRecordFields(blob, market.state);
 
-  if (!propertyAddress && !decedent && !hasEstate) return null;
+  if (!fields.propertyAddress && !fields.decedentName && !fields.hasEstateSignal) return null;
+
+  const confidence =
+    40
+    + (fields.propertyAddress ? 20 : 0)
+    + (fields.decedentName ? 18 : 0)
+    + (fields.hasEstateSignal ? 12 : 0)
+    + (fields.deedReference ? 10 : 0)
+    + (fields.parcelId ? 10 : 0)
+    + (enriched?.liveFetchOk ? 15 : 0);
 
   return {
     source_name: connector.sourceName,
@@ -36,21 +43,29 @@ export function parseHitToNormalizedRecord(
     jurisdiction_county: connector.jurisdictionCounty ?? market.county,
     source_url: hit.url,
     record_type: connector.sourceType,
-    property_address: propertyAddress,
-    owner_name: decedent,
-    decedent_name: decedent,
-    estate_case_number: blob.match(CASE)?.[1] ?? null,
-    personal_representative: pr,
+    property_address: fields.propertyAddress,
+    owner_name: fields.ownerName ?? fields.decedentName,
+    decedent_name: fields.decedentName,
+    estate_case_number: fields.estateCaseNumber,
+    personal_representative: fields.personalRepresentative,
     interested_persons: [],
-    mailing_address: null,
-    transfer_date: null,
-    deed_reference: blob.match(DEED)?.[1] ?? null,
-    parcel_id: null,
-    tax_account_id: null,
-    media_url: null,
-    confidence_score: 40 + (propertyAddress ? 20 : 0) + (decedent ? 18 : 0) + (hasEstate ? 12 : 0),
-    raw_payload: { title: hit.title, content: hit.content },
+    mailing_address: fields.mailingAddress,
+    transfer_date: fields.transferDate,
+    deed_reference: fields.deedReference,
+    parcel_id: fields.parcelId,
+    tax_account_id: fields.taxAccountId,
+    media_url: /gis|parcel/i.test(connector.sourceType) ? hit.url : null,
+    confidence_score: Math.min(92, confidence),
+    raw_payload: {
+      title: hit.title,
+      content: hit.content,
+      liveFetchOk: enriched?.liveFetchOk ?? false,
+      contentHash: enriched?.contentHash ?? null,
+      trustLevel: connector.trustLevel,
+    },
     title: hit.title,
-    snippet: hit.content.slice(0, 400),
+    snippet: blob.slice(0, 500),
+    fetch_method: enriched?.fetchMethod ?? "snippet_only",
+    content_hash: enriched?.contentHash ?? null,
   };
 }

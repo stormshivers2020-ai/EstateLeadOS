@@ -29,6 +29,12 @@ export interface NormalizedGovernmentRecord {
   tax_account_id?: string | null;
   media_url?: string | null;
   confidence_score: number;
+  /** Live source certainty score (0–100) — lead creation requires proof */
+  source_certainty_score?: number;
+  has_source_proof?: boolean;
+  fetch_method?: "live_http" | "snippet_only" | "arcgis_api";
+  content_hash?: string | null;
+  certainty_factors?: string[];
   raw_payload: Record<string, unknown>;
   title: string;
   snippet: string;
@@ -47,6 +53,8 @@ export interface RecordSourceConnector {
   trustLevel: "official" | "official_secondary" | "enrichment" | "rejected";
   buildQueries: (market: { state: string; county: string; city?: string }) => string[];
   parseHit?: (hit: { title: string; url: string; content: string }, market: { state: string; county: string }) => NormalizedGovernmentRecord | null;
+  /** Live structured fetch (ArcGIS, open data API) — bypasses search snippets */
+  fetchLiveRecords?: (market: { state: string; county: string; city?: string; limit?: number }) => Promise<NormalizedGovernmentRecord[]>;
 }
 
 export interface CountyConnectorBundle {

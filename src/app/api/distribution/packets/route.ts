@@ -5,6 +5,7 @@ import {
   updateRedactionChecklist,
   approveDistributionForSend,
   checkAttorneyApprovalGate,
+  getFinalArchivesForLead,
 } from "@/lib/services/distribution/index";
 
 export async function GET(request: Request) {
@@ -12,7 +13,11 @@ export async function GET(request: Request) {
   const leadId = searchParams.get("leadId");
   if (!leadId) return NextResponse.json({ error: "leadId required" }, { status: 400 });
   const gate = checkAttorneyApprovalGate(leadId);
-  return NextResponse.json({ packets: getDistributionPackets({ leadId }), gate });
+  return NextResponse.json({
+    packets: getDistributionPackets({ leadId }),
+    finalArchives: getFinalArchivesForLead(leadId),
+    gate,
+  });
 }
 
 export async function POST(request: Request) {
@@ -23,8 +28,10 @@ export async function POST(request: Request) {
       const packet = await buildDistributionPacket({
         leadId: body.leadId,
         packetType: body.packetType,
+        finalArchiveId: body.finalArchiveId,
         sourcePacketId: body.sourcePacketId,
         includeAttorneyNotes: body.includeAttorneyNotes,
+        hideInternalProfitNotes: body.hideInternalProfitNotes,
       });
       return NextResponse.json({ packet });
     }

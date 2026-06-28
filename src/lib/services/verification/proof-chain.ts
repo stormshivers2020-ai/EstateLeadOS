@@ -4,7 +4,9 @@ import type {
   EvidenceSource,
   LeadVerificationBundle,
   PersonVerification,
+  PropertyMedia,
   ProofChainStep,
+  ProofChainStepKind,
 } from "@/lib/types/verification";
 
 interface ProofChainInput {
@@ -14,125 +16,178 @@ interface ProofChainInput {
   evidenceSources: EvidenceSource[];
   persons: PersonVerification[];
   contacts: ContactCandidate[];
+  propertyMedia: PropertyMedia[];
+  leadManuallyApproved?: boolean;
 }
 
 function findEvidenceByType(sources: EvidenceSource[], pattern: RegExp): EvidenceSource[] {
   return sources.filter(
-    (s) => pattern.test(s.sourceType) || pattern.test(s.sourceName) || pattern.test(s.citationLabel ?? "")
+    (s) =>
+      pattern.test(s.sourceType)
+      || pattern.test(s.sourceName)
+      || pattern.test(s.citationLabel ?? "")
+      || pattern.test(s.sourceExcerpt ?? ""),
   );
 }
 
+function isOfficialGovernmentSource(source: EvidenceSource): boolean {
+  const blob = `${source.sourceType} ${source.sourceName} ${source.sourceUrl ?? ""}`;
+  if (/internet_search|signal_match|people.?search|zillow|realtor|redfin/i.test(blob)) return false;
+  return /\.gov|assessor|probate|estate|deed|recorder|register|court|gis|parcel|tax|sdat|land.?record/i.test(blob);
+}
+
+function step(
+  stepNumber: number,
+  kind: ProofChainStepKind,
+  title: string,
+  description: string,
+  status: ProofChainStep["status"],
+  evidenceIds: string[],
+  extra?: Partial<ProofChainStep>,
+): ProofChainStep {
+  return {
+    id: `proof-step-${stepNumber}`,
+    stepNumber,
+    kind,
+    title,
+    description,
+    status,
+    evidenceIds,
+    ...extra,
+  };
+}
+
 export function buildProofChain(input: ProofChainInput): ProofChainStep[] {
-  const steps: ProofChainStep[] = [];
-  const deedEvidence = findEvidenceByType(input.evidenceSources, /deed|recorder|transfer/i);
-  const probateEvidence = findEvidenceByType(input.evidenceSources, /probate|estate|wills|court/i);
-  const ownerEvidence = findEvidenceByType(input.evidenceSources, /owner|assessor|tax|parcel/i);
-  const addressEvidence = input.evidenceSources.filter((s) =>
-    (s.sourceExcerpt ?? "").toLowerCase().includes(input.propertyAddress.toLowerCase().slice(0, 12))
+  const govSources = input.evidenceSources.filter(isOfficialGovernmentSource);
+  const allSources = input.evidenceSources;
+  const deedEvidence = findEvidenceByType(allSources, /deed|recorder|transfer|land/i);
+  const probateEvidence = findEvidenceByType(allSources, /probate|estate|wills|court|inherit/i);
+  const propertyEvidence = findEvidenceByType(allSources, /assessor|assessment|sdat|property|gis|parcel|tax/i);
+  const hasGovSignal = govSources.length > 0 || allSources.length > 0;
+  const decedentPerson = input.persons.find((p) =>
+    /estate|decedent|heir|representative|executor/i.test(p.connectionRationale ?? "")
+    || p.roleLabel !== "needs_verification",
+  ) ?? input.persons[0];
+  const representative = input.persons.find((p) =>
+    p.roleLabel === "possible_personal_representative" || /representative|executor/i.test(p.connectionRationale ?? ""),
+  );
+  const approvedPerson = input.persons.find((p) => p.verificationStatus === "manually_approved");
+  const hasVisual = input.propertyMedia.some((m) =>
+    /gis|parcel|assessor|county|map|photo|screenshot/i.test(m.mediaType),
   );
 
-  steps.push({
-    id: "step-address",
-    kind: "property_address",
-    title: PROOF_CHAIN_TITLES.property_address,
-    description: input.propertyAddress,
-    status: input.propertyAddress ? "complete" : "missing",
-    evidenceIds: addressEvidence.length > 0 ? addressEvidence.map((e) => e.id) : input.evidenceSources.slice(0, 1).map((e) => e.id),
-  });
-
-  steps.push({
-    id: "step-owner",
-    kind: "owner_record",
-    title: PROOF_CHAIN_TITLES.owner_record,
-    description: input.ownerName ?? "Owner not confirmed — attach assessor or deed record.",
-    status: input.ownerName ? (ownerEvidence.length > 0 ? "complete" : "partial") : "missing",
-    confidenceScore: input.ownerName ? 55 : undefined,
-    evidenceIds: ownerEvidence.map((e) => e.id),
-  });
-
-  steps.push({
-    id: "step-deed",
-    kind: "deed_record",
-    title: PROOF_CHAIN_TITLES.deed_record,
-    description:
-      deedEvidence.length > 0
-        ? "Deed or transfer record linked from search."
-        : "No deed record attached yet.",
-    status: deedEvidence.length > 0 ? "complete" : "missing",
-    evidenceIds: deedEvidence.map((e) => e.id),
-  });
-
-  steps.push({
-    id: "step-probate",
-    kind: "probate_estate_record",
-    title: PROOF_CHAIN_TITLES.probate_estate_record,
-    description:
+  return [
+    step(
+      1,
+      "government_signal",
+      PROOF_CHAIN_TITLES.government_signal,
+      hasGovSignal
+        ? `${govSources.length || allSources.length} official or pipeline government signal(s) attached.`
+        : "No government signal yet — run Government Pipeline or official record search.",
+      hasGovSignal ? (govSources.length > 0 ? "complete" : "partial") : "missing",
+      (govSources.length > 0 ? govSources : allSources).slice(0, 3).map((e) => e.id),
+    ),
+    step(
+      2,
+      "estate_probate_signal",
+      PROOF_CHAIN_TITLES.estate_probate_signal,
       probateEvidence.length > 0
-        ? "Probate or estate record cited from search results."
-        : "Probate/estate filing not yet confirmed.",
-    status: probateEvidence.length > 0 ? "complete" : "partial",
-    evidenceIds: probateEvidence.map((e) => e.id),
-  });
-
-  for (const person of input.persons) {
-    steps.push({
-      id: `step-person-${person.id}`,
-      kind: "possible_person",
-      title: PROOF_CHAIN_TITLES.possible_person,
-      description: `${person.personName} — ${person.connectionRationale ?? "Connection inferred from search signals."}`,
-      status:
-        person.verificationStatus === "manually_approved"
-          ? "complete"
-          : person.verificationStatus === "rejected"
-            ? "missing"
-            : "partial",
-      confidenceScore: person.confidenceScore,
-      evidenceIds: input.evidenceSources.slice(0, 2).map((e) => e.id),
-      personId: person.id,
-    });
-  }
-
-  if (input.persons.length === 0) {
-    steps.push({
-      id: "step-person-placeholder",
-      kind: "possible_person",
-      title: PROOF_CHAIN_TITLES.possible_person,
-      description: "No person connection identified yet.",
-      status: "missing",
-      evidenceIds: [],
-    });
-  }
-
-  for (const contact of input.contacts) {
-    steps.push({
-      id: `step-contact-${contact.id}`,
-      kind: "contact_candidate",
-      title: PROOF_CHAIN_TITLES.contact_candidate,
-      description: `${contact.contactType.replace(/_/g, " ")}: ${contact.contactValue}`,
-      status:
-        contact.verificationStatus === "verified" || contact.verificationStatus === "likely_match"
+        ? "Estate / probate / inheritance signal found in official records."
+        : "Estate or probate signal not confirmed — check register of wills or court records.",
+      probateEvidence.length > 0 ? "complete" : "missing",
+      probateEvidence.map((e) => e.id),
+    ),
+    step(
+      3,
+      "decedent_estate_party",
+      PROOF_CHAIN_TITLES.decedent_estate_party,
+      decedentPerson
+        ? `${decedentPerson.personName} identified — ${decedentPerson.roleLabel.replace(/_/g, " ")}.`
+        : "Decedent or estate party not yet identified from official records.",
+      decedentPerson ? (decedentPerson.verificationStatus === "manually_approved" ? "complete" : "partial") : "missing",
+      probateEvidence.slice(0, 2).map((e) => e.id),
+      { personId: decedentPerson?.id, confidenceScore: decedentPerson?.confidenceScore },
+    ),
+    step(
+      4,
+      "property_match",
+      PROOF_CHAIN_TITLES.property_match,
+      input.propertyAddress
+        ? `Property match: ${input.propertyAddress}${input.parcelId ? ` (parcel ${input.parcelId})` : ""}.`
+        : "Property record not matched to an official assessor/GIS source.",
+      input.propertyAddress && propertyEvidence.length > 0
+        ? "complete"
+        : input.propertyAddress
           ? "partial"
           : "missing",
-      confidenceScore: contact.confidenceScore,
-      evidenceIds: [],
-      contactId: contact.id,
-    });
-  }
-
-  const approvedPerson = input.persons.find((p) => p.verificationStatus === "manually_approved");
-  steps.push({
-    id: "step-manual-approval",
-    kind: "manual_approval",
-    title: PROOF_CHAIN_TITLES.manual_approval,
-    description: approvedPerson
-      ? `Manually approved: ${approvedPerson.personName}`
-      : "Awaiting operator review — never contact without manual approval.",
-    status: approvedPerson ? "complete" : "pending_approval",
-    evidenceIds: approvedPerson ? input.evidenceSources.slice(0, 1).map((e) => e.id) : [],
-    personId: approvedPerson?.id,
-  });
-
-  return steps;
+      propertyEvidence.map((e) => e.id),
+    ),
+    step(
+      5,
+      "deed_transfer_checked",
+      PROOF_CHAIN_TITLES.deed_transfer_checked,
+      deedEvidence.length > 0
+        ? "Deed / transfer record checked against land records."
+        : "Deed or transfer record not yet attached.",
+      deedEvidence.length > 0 ? "complete" : "missing",
+      deedEvidence.map((e) => e.id),
+    ),
+    step(
+      6,
+      "representative_party",
+      PROOF_CHAIN_TITLES.representative_party,
+      representative
+        ? `Possible representative: ${representative.personName}.`
+        : decedentPerson
+          ? `Party identified; representative role needs confirmation.`
+          : "No possible responsible party / representative identified.",
+      representative || decedentPerson ? "partial" : "missing",
+      [...probateEvidence, ...deedEvidence].slice(0, 2).map((e) => e.id),
+      { personId: representative?.id ?? decedentPerson?.id },
+    ),
+    step(
+      7,
+      "property_visual",
+      PROOF_CHAIN_TITLES.property_visual,
+      hasVisual
+        ? `${input.propertyMedia.length} property visual(s) from official or attributed sources.`
+        : "Add GIS parcel map, assessor photo, or official property visual.",
+      hasVisual ? "complete" : "missing",
+      [],
+    ),
+    step(
+      8,
+      "evidence_citations",
+      PROOF_CHAIN_TITLES.evidence_citations,
+      allSources.length > 0
+        ? `${allSources.length} evidence citation(s) attached — every claim must cite a source.`
+        : "Attach evidence citations before verification.",
+      allSources.length > 0 ? "complete" : "missing",
+      allSources.map((e) => e.id),
+    ),
+    step(
+      9,
+      "contact_candidate",
+      PROOF_CHAIN_TITLES.contact_candidate,
+      input.contacts.length > 0
+        ? `${input.contacts.length} contact candidate(s) saved separately from verified proof — low-confidence enrichment only.`
+        : "No contact candidates yet (optional — cannot verify lead from people-search).",
+      input.contacts.length > 0 ? "partial" : "missing",
+      [],
+      { contactId: input.contacts[0]?.id, confidenceScore: input.contacts[0]?.confidenceScore },
+    ),
+    step(
+      10,
+      "manual_review",
+      PROOF_CHAIN_TITLES.manual_review,
+      approvedPerson || input.leadManuallyApproved
+        ? `Manual review recorded${approvedPerson ? `: ${approvedPerson.personName}` : ""}. Not legal approval.`
+        : "Manual user review required before lead moves forward. EstateLeadOS does not auto-contact anyone.",
+      approvedPerson || input.leadManuallyApproved ? "complete" : "pending_approval",
+      approvedPerson ? allSources.slice(0, 1).map((e) => e.id) : [],
+      { personId: approvedPerson?.id },
+    ),
+  ];
 }
 
 export function assembleVerificationBundle(
@@ -141,7 +196,8 @@ export function assembleVerificationBundle(
     propertyAddress: string;
     ownerName?: string | null;
     parcelId?: string | null;
-  }
+    leadManuallyApproved?: boolean;
+  },
 ): LeadVerificationBundle {
   const proofChain = buildProofChain({
     propertyAddress: partial.propertyAddress,
@@ -150,6 +206,8 @@ export function assembleVerificationBundle(
     evidenceSources: partial.evidenceSources,
     persons: partial.persons,
     contacts: partial.contactCandidates,
+    propertyMedia: partial.propertyMedia,
+    leadManuallyApproved: partial.leadManuallyApproved,
   });
 
   return {

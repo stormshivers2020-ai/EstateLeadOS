@@ -5,7 +5,7 @@ import {
   REGISTER_OF_WILLS_CONNECTOR,
   MD_OPEN_DATA_CONNECTOR,
 } from "./sdat";
-import { HARFORD_GIS_CONNECTOR, HARFORD_TAX_CONNECTOR } from "./harford";
+import { HARFORD_GIS_CONNECTOR, HARFORD_TAX_CONNECTOR } from "./harford-gis";
 import { MARYLAND_COUNTIES } from "./counties";
 
 const STATEWIDE: RecordSourceConnector[] = [

@@ -65,7 +65,7 @@ export async function runEstateLeadOS(input: {
       return {
         action: input.action,
         success: true,
-        message: `${docResult.missingCount} missing document(s) identified.`,
+        message: `${docResult.missingCount} missing document(s) identified for government proof chain.`,
         details: docResult,
       };
     }
@@ -184,8 +184,15 @@ export async function runEstateLeadOS(input: {
 }
 
 export { getPacketTypes, runDocumentFinder, buildLeadPacket, evaluateAssignmentReadiness, rebuildReviewQueue };
+export { generateDraftSignatureDocuments } from "./draft-signature-builder";
 export { getArchiveOverview, recordPacketPrint, archivePacket } from "./archive";
-export { getProgramPackets, getLeadArchives } from "./local-store";
+export {
+  getArchiveHubData,
+  saveToInitialReviewArchive,
+  saveToFinalAttorneyArchive,
+  lockArchiveVersion,
+} from "./archive-hub";
+export { getProgramPackets, getLeadArchives, getDraftSignatureDocuments, getArchiveFiles } from "./local-store";
 export { getReviewQueueOverview } from "./review-queue";
 export { getRequiredDocuments, getAssignmentReadiness } from "./local-store";
 export { updateAssignmentFees } from "./assignment-readiness";

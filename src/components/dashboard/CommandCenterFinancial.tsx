@@ -1,5 +1,6 @@
 import { AnalyticsMetricCard } from "@/components/analytics/AnalyticsMetricCard";
-import { ProcessStepMap } from "@/components/analytics/ProcessStepMap";
+import { DealCommandStepper } from "@/components/deal-command/DealCommandStepper";
+import { getNextProcessStep } from "@/lib/services/analytics/process-step";
 import { AnalyticsDisclaimer } from "@/components/analytics/AnalyticsDisclaimer";
 import { NextBestActions } from "@/components/dashboard/NextBestActions";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -52,8 +53,13 @@ export function CommandCenterFinancial({ analytics }: CommandCenterFinancialProp
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <SectionHeader title="Process Step Map" subtitle="Start Here → Next Step — master operating sequence" />
-          <ProcessStepMap aggregateCounts={analytics.stepCounts} currentStep={nextStep.step} nextStep={nextStep.step} compact />
+          <SectionHeader title="Deal Command Wizard" subtitle="Step 1 is always first — current and next step clearly marked" />
+          <DealCommandStepper
+            aggregateCounts={analytics.stepCounts}
+            currentStep={nextStep.step}
+            nextStep={getNextProcessStep(nextStep.step)}
+            compact
+          />
 
           <SectionHeader title="Pipeline Value & Performance Zones" subtitle="County, source, packet, attorney, buyer, assignment analytics" />
           <div className="grid gap-3 sm:grid-cols-2">

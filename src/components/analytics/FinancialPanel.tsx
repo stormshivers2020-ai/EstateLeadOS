@@ -2,7 +2,8 @@
 
 import { AnalyticsMetricCard } from "@/components/analytics/AnalyticsMetricCard";
 import { AnalyticsPieChart } from "@/components/analytics/charts/AnalyticsPieChart";
-import { ProcessStepMap } from "@/components/analytics/ProcessStepMap";
+import { DealCommandStepper } from "@/components/deal-command/DealCommandStepper";
+import { getNextProcessStep } from "@/lib/services/analytics/process-step";
 import { AnalyticsDisclaimer } from "@/components/analytics/AnalyticsDisclaimer";
 import { ACCRUED_MONEY_WARNING } from "@/lib/types/analytics";
 import { EXPENSE_CATEGORY_LABELS, type ExpenseCategory } from "@/lib/types/analytics";
@@ -36,7 +37,13 @@ export function FinancialPanel({ leadId, data }: FinancialPanelProps) {
         </CardContent>
       </Card>
 
-      <ProcessStepMap steps={data.processSteps} currentStep={data.currentStep} leadId={leadId} compact />
+      <DealCommandStepper
+        steps={data.processSteps}
+        currentStep={data.currentStep}
+        nextStep={getNextProcessStep(data.currentStep)}
+        leadId={leadId}
+        compact
+      />
 
       <SectionHeader title="Deal Financials" subtitle="Estimated, accrued, pending, and received — never mixed" />
 

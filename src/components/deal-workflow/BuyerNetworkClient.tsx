@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { EmptyState } from "@/components/layout/EmptyState";
@@ -10,7 +11,7 @@ import {
   getBuyers, getBuyerNetworkOverview, getBuyerImportBatches, simulateBuyerCsvImport,
 } from "@/lib/services/buyers";
 import { GLOBAL_DISCLAIMER } from "@/lib/constants/disclaimer";
-import { Users, Upload } from "lucide-react";
+import { Users, Upload, Send } from "lucide-react";
 
 const VIEWS = [
   { id: "all", label: "All Buyers" },
@@ -69,6 +70,10 @@ export function BuyerNetworkClient({ isDemo }: BuyerNetworkClientProps) {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-lg border border-violet-700/40 bg-violet-900/20 px-4 py-3 text-sm text-violet-200">
+        Send packets from Lead Detail → Email Distribution after Final Archive is complete. No auto-send — user approval required.
+      </div>
+
       <div className="rounded-lg border border-sky-700/40 bg-sky-900/20 px-4 py-3 text-sm text-sky-200">
         Buyer Network is tied to acquisition workflow — match buyers to contract interest, not property sale listings you do not own.
       </div>
@@ -125,7 +130,8 @@ export function BuyerNetworkClient({ isDemo }: BuyerNetworkClientProps) {
                   <th className="pb-2 pr-4">Max Price</th>
                   <th className="pb-2 pr-4">POF</th>
                   <th className="pb-2 pr-4">Status</th>
-                  <th className="pb-2">Closing</th>
+                  <th className="pb-2 pr-4">Closing</th>
+                  <th className="pb-2">Send Packet</th>
                 </tr>
               </thead>
               <tbody>
@@ -139,7 +145,19 @@ export function BuyerNetworkClient({ isDemo }: BuyerNetworkClientProps) {
                     <td className="py-3 pr-4 text-xs">{b.maxPrice ? `$${b.maxPrice.toLocaleString()}` : "—"}</td>
                     <td className="py-3 pr-4"><PofBadge status={b.proofOfFundsStatus} /></td>
                     <td className="py-3 pr-4"><Badge variant={b.status === "preferred" ? "success" : "default"}>{b.status}</Badge></td>
-                    <td className="py-3 text-xs text-slate-400">{b.closingSpeed}</td>
+                    <td className="py-3 pr-4 text-xs text-slate-400">{b.closingSpeed}</td>
+                    <td className="py-3">
+                      {b.email ? (
+                        <Link
+                          href={`/leads/lead-demo-1?tab=email&recipientEmail=${encodeURIComponent(b.email)}`}
+                          className="inline-flex items-center gap-1 text-xs text-sky-400 hover:underline"
+                        >
+                          <Send className="h-3 w-3" /> Send Packet
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-slate-600">No email</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

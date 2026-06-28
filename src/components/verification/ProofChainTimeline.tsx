@@ -1,6 +1,8 @@
 import type { EvidenceSource, ProofChainStep } from "@/lib/types/verification";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { APP_NAME, POWERED_BY } from "@/lib/constants/brand";
+import { GOVERNMENT_PROOF_DISCLAIMER } from "@/lib/constants/required-packet-items";
 import { GitBranch } from "lucide-react";
 
 interface ProofChainTimelineProps {
@@ -17,28 +19,47 @@ const STATUS_COLORS: Record<ProofChainStep["status"], string> = {
 
 export function ProofChainTimeline({ steps, evidenceSources }: ProofChainTimelineProps) {
   const evidenceById = new Map(evidenceSources.map((e) => [e.id, e]));
+  const sorted = [...steps].sort((a, b) => a.stepNumber - b.stepNumber);
 
   return (
-    <Card>
+    <Card className="border-sky-800/30">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <GitBranch className="h-4 w-4" />
-          Proof Chain
+          <GitBranch className="h-4 w-4 text-sky-400" />
+          Government Proof Chain Timeline
         </CardTitle>
+        <p className="text-[10px] uppercase tracking-wider text-slate-500">
+          {APP_NAME} · Powered by {POWERED_BY}
+        </p>
+        <p className="text-xs text-slate-500">{GOVERNMENT_PROOF_DISCLAIMER}</p>
       </CardHeader>
       <CardContent>
         <ol className="relative space-y-0 border-l border-slate-700 pl-4 sm:pl-6">
-          {steps.map((step, index) => (
+          {sorted.map((step) => (
             <li key={step.id} className="relative pb-5 last:pb-0 sm:pb-6">
-              <span className="absolute -left-[0.85rem] top-1.5 flex h-3 w-3 rounded-full border-2 border-sky-500 bg-slate-900 sm:-left-[1.35rem]" />
+              <span
+                className={`absolute -left-[0.85rem] top-1.5 flex h-3 w-3 rounded-full border-2 bg-slate-900 sm:-left-[1.35rem] ${
+                  step.status === "complete"
+                    ? "border-emerald-500"
+                    : step.status === "pending_approval"
+                      ? "border-sky-500"
+                      : step.status === "partial"
+                        ? "border-amber-500"
+                        : "border-slate-600"
+                }`}
+              />
               <div className={`rounded-lg border p-3 sm:p-3 ${STATUS_COLORS[step.status]}`}>
                 <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-                  <span className="text-xs font-medium text-slate-500">Step {index + 1}</span>
+                  <span className="text-xs font-mono text-slate-500">Step {step.stepNumber}</span>
                   <span className="font-medium text-slate-200">{step.title}</span>
                   <div className="flex flex-wrap gap-1.5">
                     <Badge variant="default">{step.status.replace(/_/g, " ")}</Badge>
-                    {step.confidenceScore != null && (
-                      <Badge variant="info">{step.confidenceScore}%</Badge>
+                    {step.confidenceScore != null && <Badge variant="info">{step.confidenceScore}%</Badge>}
+                    {step.kind === "contact_candidate" && (
+                      <Badge variant="warning">Separate from verified proof</Badge>
+                    )}
+                    {step.kind === "manual_review" && (
+                      <Badge variant="info">Not legal approval</Badge>
                     )}
                   </div>
                 </div>
@@ -50,7 +71,9 @@ export function ProofChainTimeline({ steps, evidenceSources }: ProofChainTimelin
                       if (!ev) return null;
                       return (
                         <li key={eid}>
-                          [{ev.citationNumber}] {ev.sourceName} — {ev.citationLabel}
+                          <a href={`#evidence-${ev.id}`} className="text-sky-400 hover:underline">
+                            [{ev.citationNumber}] {ev.sourceName} — {ev.citationLabel}
+                          </a>
                         </li>
                       );
                     })}

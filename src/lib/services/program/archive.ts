@@ -8,55 +8,36 @@ import {
   updateLeadArchive,
   getProgramPackets,
 } from "./local-store";
-
-function uid(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-}
+import { saveToInitialReviewArchive, getArchiveHubData } from "./archive-hub";
 
 function now(): string {
   return new Date().toISOString();
 }
 
+/** @deprecated Prefer saveToInitialReviewArchive for Step 14 first archive */
 export function archivePacket(packet: LeadPacket, notes?: string): LeadArchive {
-  const session = getSessionContext();
-  const lead = getFullLeadByIdSync(packet.leadId);
-
-  const archive: LeadArchive = {
-    id: uid("la"),
-    organizationId: session.organizationId,
-    leadId: packet.leadId,
-    packetId: packet.id,
-    archiveStatus: packet.packetStatus === "missing_documents" ? "missing_documents" : "ready_for_review",
-    archiveType: packet.packetType,
-    archivedBy: session.userName,
-    archivedAt: now(),
-    archiveNotes: notes ?? null,
-    printCount: 0,
-    lastPrintedAt: null,
-    countyName: lead?.county ?? null,
-    stateAbbr: lead?.state ?? null,
-    confidenceScore: packet.confidenceScore,
-    verificationStatus: packet.verificationStatus,
-    createdAt: now(),
-    updatedAt: now(),
-  };
-
-  return saveLeadArchive(archive);
+  return saveToInitialReviewArchive(packet.id, notes);
 }
 
-export function recordPacketPrint(packetId: string, leadId: string, printType = "browser"): void {
+export function recordPacketPrint(
+  packetId: string,
+  leadId: string,
+  printType = "browser",
+  archiveId?: string | null
+): void {
   const session = getSessionContext();
   logPacketPrint({
     organizationId: session.organizationId,
     leadId,
     packetId,
+    archiveId: archiveId ?? null,
     printedBy: session.userName,
     printType,
     notes: null,
   });
 
   const archives = getLeadArchives({ leadId });
-  const archive = archives.find((a) => a.packetId === packetId);
+  const archive = archives.find((a) => a.packetId === packetId || a.id === archiveId);
   if (archive) {
     updateLeadArchive(archive.id, {
       printCount: archive.printCount + 1,
@@ -66,6 +47,7 @@ export function recordPacketPrint(packetId: string, leadId: string, printType = 
 }
 
 export function getArchiveOverview() {
+  const hub = getArchiveHubData("all");
   const archives = getLeadArchives();
   return {
     total: archives.length,
@@ -77,8 +59,11 @@ export function getArchiveOverview() {
     archivedClosed: archives.filter((a) => a.archiveStatus === "archived_closed").length,
     rejected: archives.filter((a) => a.archiveStatus === "rejected").length,
     needsManualResearch: archives.filter((a) => a.archiveStatus === "needs_manual_research").length,
+    initialReviewCount: hub.stats.initialCount,
+    finalReviewCount: hub.stats.finalCount,
     archives,
     packets: getProgramPackets(),
+    hub,
   };
 }
 
@@ -87,3 +72,16 @@ export function duplicatePacketVersion(packet: LeadPacket): { message: string } 
     message: `Create a new version via Packet Builder — current version is v${packet.packetVersion}. Previous versions are preserved in archive.`,
   };
 }
+
+export {
+  saveToInitialReviewArchive,
+  saveToFinalAttorneyArchive,
+  getArchiveHubData,
+  lockArchiveVersion,
+  markArchiveSuperseded,
+  markArchiveRejected,
+  duplicateArchiveNewVersion,
+  getArchivePrintableHtml,
+  type ArchiveHubData,
+  type ArchiveHubItem,
+} from "./archive-hub";

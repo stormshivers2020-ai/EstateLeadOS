@@ -14,11 +14,71 @@ export type RequiredDocumentStatus =
 
 export type LeadPacketType =
   | "internal_review"
+  | "acquisition_preparation"
+  | "seller_review"
   | "seller_outreach_prep"
   | "buyer_investor_opportunity"
   | "assignment_readiness"
   | "attorney_title_review"
   | "full_lead_archive";
+
+/** Phase 3 — six primary review packet types shown in Acquisition Packet Builder. */
+export const PRIMARY_PACKET_TYPES: LeadPacketType[] = [
+  "internal_review",
+  "acquisition_preparation",
+  "seller_review",
+  "attorney_title_review",
+  "assignment_readiness",
+  "full_lead_archive",
+];
+
+export type DraftSignatureDocumentStatus =
+  | "draft"
+  | "missing_data"
+  | "ready_for_internal_review"
+  | "ready_for_attorney_review"
+  | "attorney_changes_requested"
+  | "attorney_approved"
+  | "ready_for_signature"
+  | "signed_uploaded"
+  | "archived"
+  | "rejected";
+
+export const DRAFT_SIGNATURE_REVIEW_LABEL =
+  "Draft — Requires Attorney / Title Review Before Use";
+
+export const DRAFT_SIGNATURE_STATUS_LABELS: Record<DraftSignatureDocumentStatus, string> = {
+  draft: "Draft",
+  missing_data: "Missing Data",
+  ready_for_internal_review: "Ready for Internal Review",
+  ready_for_attorney_review: "Ready for Attorney Review",
+  attorney_changes_requested: "Attorney Changes Requested",
+  attorney_approved: "Attorney Approved",
+  ready_for_signature: "Ready for Signature",
+  signed_uploaded: "Signed / Uploaded",
+  archived: "Archived",
+  rejected: "Rejected",
+};
+
+export interface DraftSignatureDocument {
+  id: string;
+  organizationId: string;
+  leadId: string;
+  packetId: string | null;
+  documentName: string;
+  documentType: string;
+  status: DraftSignatureDocumentStatus;
+  templateVersion: string;
+  requiredFields: string[];
+  missingFields: string[];
+  generatedHtml: string;
+  pdfUrl: string | null;
+  attorneyReviewRequired: boolean;
+  signatureRequired: boolean;
+  signedFileUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export type LeadPacketStatus =
   | "draft"
@@ -41,7 +101,54 @@ export type ArchiveStatus =
   | "assignment_review_ready"
   | "archived_closed"
   | "rejected"
-  | "needs_manual_research";
+  | "needs_manual_research"
+  | "ready_for_attorney"
+  | "attorney_reviewed"
+  | "final_approved"
+  | "superseded";
+
+export type ArchiveStage = "initial_review" | "final_attorney_reviewed";
+
+export type ArchiveTabId =
+  | "initial_review"
+  | "final_attorney_reviewed"
+  | "all"
+  | "ready_to_print"
+  | "ready_for_attorney"
+  | "attorney_reviewed"
+  | "final_approved"
+  | "rejected_superseded";
+
+export type ArchiveFileStatus =
+  | "active"
+  | "superseded"
+  | "rejected"
+  | "locked"
+  | "archived";
+
+export interface ArchiveFile {
+  id: string;
+  organizationId: string;
+  leadId: string;
+  archiveId: string;
+  packetId: string | null;
+  fileName: string;
+  fileType: string;
+  fileUrl: string;
+  fileCategory: string;
+  versionNumber: number;
+  status: ArchiveFileStatus;
+  uploadedBy: string;
+  generatedBy: string;
+  uploadedAt: string;
+  generatedAt: string;
+  locked: boolean;
+  supersededBy: string | null;
+  notes: string | null;
+  auditReference: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export type AssignmentReadinessStatus =
   | "not_started"
@@ -94,6 +201,7 @@ export interface RequiredDocument {
   evidenceSourceId?: string | null;
   uploadedFileUrl?: string | null;
   requiredForPacket: boolean;
+  requiredForAttorneyReview: boolean;
   requiredForAssignmentReview: boolean;
   requiredForBuyerReview: boolean;
   whyItMatters?: string | null;
@@ -133,6 +241,7 @@ export interface LeadPacket {
   verificationStatus: string;
   complianceStatus: string;
   assignmentReadinessStatus: AssignmentReadinessStatus;
+  attorneyReviewStatus: string;
   buyerReviewStatus: string;
   payoutReadinessStatus: string;
   notes?: string | null;
@@ -146,6 +255,7 @@ export interface LeadArchive {
   organizationId: string;
   leadId: string;
   packetId: string;
+  archiveStage: ArchiveStage;
   archiveStatus: ArchiveStatus;
   archiveType: LeadPacketType;
   archivedBy: string;
@@ -153,10 +263,18 @@ export interface LeadArchive {
   archiveNotes?: string | null;
   printCount: number;
   lastPrintedAt?: string | null;
+  locked: boolean;
+  packetVersion: number;
+  propertyAddress?: string | null;
   countyName?: string | null;
   stateAbbr?: string | null;
   confidenceScore: number;
   verificationStatus: string;
+  attorneyReviewStatus?: string | null;
+  signatureStatus?: string | null;
+  nextAction?: string | null;
+  generatedAt?: string | null;
+  supersededBy?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -210,6 +328,7 @@ export interface PacketPrintLog {
   organizationId: string;
   leadId: string;
   packetId: string;
+  archiveId?: string | null;
   printedBy: string;
   printedAt: string;
   printType: string;
@@ -218,12 +337,17 @@ export interface PacketPrintLog {
 
 export const PACKET_TYPE_LABELS: Record<LeadPacketType, string> = {
   internal_review: "Internal Review Packet",
-  seller_outreach_prep: "Seller Outreach Preparation Packet",
+  acquisition_preparation: "Acquisition Preparation Packet",
+  seller_review: "Seller Review Packet",
+  seller_outreach_prep: "Seller Review Packet",
   buyer_investor_opportunity: "Buyer / Investor Opportunity Packet",
   assignment_readiness: "Assignment Readiness Packet",
-  attorney_title_review: "Attorney / Title Review Packet",
+  attorney_title_review: "Attorney Review Packet",
   full_lead_archive: "Full Lead Archive Packet",
 };
+
+export const ACQUISITION_PACKET_DISCLAIMER =
+  "EstateLeadOS prepares draft documents, checklists, packets, and placeholders for professional review. These materials are not legally valid and are not ready to sign until reviewed and approved by a qualified attorney or title company.";
 
 export const PACKET_STATUS_LABELS: Record<LeadPacketStatus, string> = {
   draft: "Draft",

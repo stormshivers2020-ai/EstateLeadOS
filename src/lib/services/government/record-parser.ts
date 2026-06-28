@@ -3,20 +3,7 @@ import type { InternetSearchHit } from "@/lib/services/lead-discovery/types";
 import { classifySourceUrl } from "./source-filter";
 import { getAllowedGovernmentSources } from "./source-registry";
 
-const ADDRESS_PATTERN =
-  /\d{1,6}\s+[\w\s.'#-]+(?:\b(?:St|Street|Ave|Avenue|Rd|Road|Dr|Drive|Ln|Lane|Blvd|Boulevard|Way|Ct|Court|Pl|Place)\b)[,\s]+[\w\s.'-]+,?\s*[A-Z]{2}\b(?:\s+\d{5}(?:-\d{4})?)?/i;
-
-const ESTATE_CASE = /\b(?:estate|case|file)\s*(?:no\.?|#)?\s*([A-Z0-9-]{4,})/i;
-const DEED_REF = /\b(?:deed|instrument|lib|book)\s*(?:no\.?|#)?\s*([A-Z0-9-]{3,})/i;
-const DECEDENT = /(?:estate of|decedent|in re:?\s*(?:the\s+)?estate of)\s+([A-Za-z][A-Za-z\s.'-]{1,60})/i;
-const PR_PATTERN = /(?:personal representative|executor|administrator)[:\s]+([A-Za-z][A-Za-z\s.'-]{1,60})/i;
-
-function extractAddress(text: string, state: string): string | null {
-  const match = text.match(ADDRESS_PATTERN);
-  if (match) return match[0].replace(/\s+/g, " ").trim();
-  const street = text.match(/\d{1,6}\s+[\w\s.'#-]+(?:St|Street|Ave|Rd|Road|Dr|Drive|Ln|Lane|Blvd|Way|Ct|Court)\b/i);
-  return street ? `${street[0].trim()}, ${state}` : null;
-}
+import { extractAddress, extractRecordFields } from "./field-extractor";
 
 function scoreRecord(recordType: string, hasAddress: boolean, hasEstate: boolean): number {
   let score = 40;
@@ -37,14 +24,11 @@ export function hitToGovernmentRecord(
   const classification = classifySourceUrl(hit.url, true);
   if (!classification.allowed) return null;
 
-  const propertyAddress = extractAddress(blob, market.state);
-  const decedentMatch = blob.match(DECEDENT);
-  const prMatch = blob.match(PR_PATTERN);
-  const deedMatch = blob.match(DEED_REF);
-  const caseMatch = blob.match(ESTATE_CASE);
-  const hasEstate = /probate|estate|decedent|executor|heir|register of wills/i.test(blob);
+  const fields = extractRecordFields(blob, market.state);
+  const propertyAddress = fields.propertyAddress;
+  const hasEstate = fields.hasEstateSignal;
 
-  if (!propertyAddress && !hasEstate && !decedentMatch) return null;
+  if (!propertyAddress && !hasEstate && !fields.decedentName) return null;
 
   const recordType = source.sourceType;
   const confidenceScore = scoreRecord(recordType, Boolean(propertyAddress), hasEstate);
@@ -56,16 +40,16 @@ export function hitToGovernmentRecord(
     jurisdiction: `${market.county} County, ${market.state}`,
     recordType,
     propertyAddress,
-    ownerName: decedentMatch?.[1]?.trim() ?? null,
-    transferDate: null,
-    deedReference: deedMatch?.[1] ?? null,
-    estateCaseNumber: caseMatch?.[1] ?? null,
-    decedentName: decedentMatch?.[1]?.trim() ?? null,
-    personalRepresentative: prMatch?.[1]?.trim() ?? null,
+    ownerName: fields.ownerName ?? fields.decedentName,
+    transferDate: fields.transferDate,
+    deedReference: fields.deedReference,
+    estateCaseNumber: fields.estateCaseNumber,
+    decedentName: fields.decedentName,
+    personalRepresentative: fields.personalRepresentative,
     interestedPersons: [],
-    mailingAddress: null,
+    mailingAddress: fields.mailingAddress,
     confidenceScore,
-    rawPayload: { title: hit.title, content: hit.content, score: hit.score },
+    rawPayload: { title: hit.title, content: hit.content, score: hit.score, parcelId: fields.parcelId },
     title: hit.title,
     snippet: hit.content.slice(0, 400),
     registryId: source.registryId,

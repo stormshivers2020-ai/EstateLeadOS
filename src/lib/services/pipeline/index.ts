@@ -4,12 +4,14 @@ import { getSessionContext } from "@/lib/config/session";
 import { isSupabaseMode } from "@/lib/config/runtime";
 import { runCountyConnectors } from "@/lib/record-sources/maryland";
 import { governmentRecordsToCandidates } from "@/lib/services/government/candidate-mapper";
+import { MIN_CERTAINTY_FOR_LEAD_QUEUE } from "@/lib/services/government/source-certainty";
 import type { GovernmentNormalizedRecord } from "@/lib/types/government";
 import type { NormalizedGovernmentRecord } from "@/lib/record-sources/types";
 import { derivePipelineStage, scorePipelineRecord } from "./confidence-scoring";
 import * as local from "./local-store";
 import type { LeadPipelineStage } from "@/lib/types/pipeline";
 import { queuePendingLocally } from "@/lib/services/lead-discovery/approval";
+import { queueCandidatesSupabase } from "@/lib/services/lead-discovery";
 import { persistVerificationForCandidateAsync } from "@/lib/services/verification";
 
 function toGovRecord(r: NormalizedGovernmentRecord): GovernmentNormalizedRecord {
@@ -29,6 +31,11 @@ function toGovRecord(r: NormalizedGovernmentRecord): GovernmentNormalizedRecord 
     interestedPersons: r.interested_persons,
     mailingAddress: r.mailing_address,
     confidenceScore: r.confidence_score,
+    sourceCertaintyScore: r.source_certainty_score,
+    hasSourceProof: r.has_source_proof,
+    fetchMethod: r.fetch_method,
+    contentHash: r.content_hash,
+    mediaUrl: r.media_url,
     rawPayload: r.raw_payload,
     title: r.title,
     snippet: r.snippet,
@@ -145,11 +152,21 @@ export async function runCountyPipeline(stateAbbr: string, countyName: string) {
           records.map(toGovRecord),
           { state: stateAbbr, county: countyName }
         );
-        if (candidates.length > 0 && !isSupabaseMode()) {
-          const queued = queuePendingLocally(candidates.slice(0, 1), searchId);
-          for (const p of queued) {
-            await persistVerificationForCandidateAsync(p.id, p.candidate, searchId);
-            local.updatePipelineItem(item.id, { leadId: p.id });
+        const withProof = candidates.filter(
+          (c) =>
+            c.governmentRecord?.hasSourceProof !== false
+            && (c.governmentRecord?.sourceCertaintyScore ?? 0) >= MIN_CERTAINTY_FOR_LEAD_QUEUE
+        );
+        if (withProof.length > 0) {
+          if (isSupabaseMode()) {
+            const queued = await queueCandidatesSupabase(withProof.slice(0, 1), searchId);
+            if (queued[0]) local.updatePipelineItem(item.id, { leadId: queued[0].id });
+          } else {
+            const queued = queuePendingLocally(withProof.slice(0, 1), searchId);
+            for (const p of queued) {
+              await persistVerificationForCandidateAsync(p.id, p.candidate, searchId);
+              local.updatePipelineItem(item.id, { leadId: p.id });
+            }
           }
         }
       }
@@ -171,7 +188,7 @@ export async function runCountyPipeline(stateAbbr: string, countyName: string) {
       sourcesQueried: result.sourcesQueried,
       signalsFound: result.records.length,
       itemsCreated,
-      summary: `${itemsCreated} pipeline item(s) from ${result.records.length} government record(s)`,
+      summary: `${itemsCreated} pipeline item(s) from ${result.records.length} proven government record(s) · ${result.liveFetchCount} live-fetched · ${result.arcgisCount} ArcGIS · ${result.rejectedLowCertainty} low-certainty rejected`,
     });
 
     return {
@@ -181,6 +198,9 @@ export async function runCountyPipeline(stateAbbr: string, countyName: string) {
       itemsCreated,
       manualReviewTasks: result.manualReviewTasks,
       queries: result.queries,
+      liveFetchCount: result.liveFetchCount,
+      arcgisCount: result.arcgisCount,
+      rejectedLowCertainty: result.rejectedLowCertainty,
     };
   } catch (error) {
     local.completeAutomationRun(run.id, {

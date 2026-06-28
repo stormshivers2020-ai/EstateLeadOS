@@ -1,7 +1,9 @@
 import { getSessionContext } from "@/lib/config/session";
 import { getLocalState, persistLocalState } from "@/lib/local/localStateStore";
 import type {
+  ArchiveFile,
   AssignmentReadiness,
+  DraftSignatureDocument,
   LeadArchive,
   LeadPacket,
   PacketPrintLog,
@@ -20,10 +22,12 @@ function now(): string {
 type ProgramState = ReturnType<typeof getLocalState> & {
   programPackets?: LeadPacket[];
   leadArchives?: LeadArchive[];
+  archiveFiles?: ArchiveFile[];
   requiredDocuments?: RequiredDocument[];
   assignmentReadiness?: AssignmentReadiness[];
   reviewQueueItems?: ReviewQueueItem[];
   packetPrintLogs?: PacketPrintLog[];
+  draftSignatureDocuments?: DraftSignatureDocument[];
 };
 
 function ensureProgramState(): ProgramState {
@@ -34,6 +38,8 @@ function ensureProgramState(): ProgramState {
   if (!state.assignmentReadiness) state.assignmentReadiness = [];
   if (!state.reviewQueueItems) state.reviewQueueItems = [];
   if (!state.packetPrintLogs) state.packetPrintLogs = [];
+  if (!state.draftSignatureDocuments) state.draftSignatureDocuments = [];
+  if (!state.archiveFiles) state.archiveFiles = [];
   return state;
 }
 
@@ -63,18 +69,40 @@ export function getNextPacketVersion(leadId: string, packetType: string): number
   return Math.max(...existing.map((p) => p.packetVersion)) + 1;
 }
 
-export function getLeadArchives(filters?: { leadId?: string; archiveStatus?: string }): LeadArchive[] {
+export function getLeadArchives(filters?: {
+  leadId?: string;
+  archiveStatus?: string;
+  archiveStage?: string;
+}): LeadArchive[] {
   let items = ensureProgramState().leadArchives ?? [];
   if (filters?.leadId) items = items.filter((a) => a.leadId === filters.leadId);
   if (filters?.archiveStatus) items = items.filter((a) => a.archiveStatus === filters.archiveStatus);
+  if (filters?.archiveStage) items = items.filter((a) => (a.archiveStage ?? inferArchiveStage(a)) === filters.archiveStage);
   return items.sort((a, b) => b.archivedAt.localeCompare(a.archivedAt));
+}
+
+function inferArchiveStage(archive: LeadArchive): LeadArchive["archiveStage"] {
+  if (archive.archiveStage) return archive.archiveStage;
+  if (archive.archiveType === "attorney_title_review" || archive.archiveNotes?.includes("Final Archive")) {
+    return "final_attorney_reviewed";
+  }
+  return "initial_review";
 }
 
 export function saveLeadArchive(archive: LeadArchive): LeadArchive {
   const state = ensureProgramState();
-  state.leadArchives!.unshift(archive);
+  const normalized: LeadArchive = {
+    ...archive,
+    archiveStage: archive.archiveStage ?? inferArchiveStage(archive),
+    locked: archive.locked ?? false,
+    packetVersion: archive.packetVersion ?? 1,
+    updatedAt: now(),
+  };
+  const idx = state.leadArchives!.findIndex((a) => a.id === normalized.id);
+  if (idx === -1) state.leadArchives!.unshift(normalized);
+  else state.leadArchives![idx] = { ...state.leadArchives![idx], ...normalized };
   persistLocalState();
-  return archive;
+  return normalized;
 }
 
 export function updateLeadArchive(id: string, patch: Partial<LeadArchive>): LeadArchive | null {
@@ -183,3 +211,58 @@ export const ASSIGNMENT_CHECKLIST_TEMPLATE = [
   { id: "fee_target", label: "Assignment fee target entered", required: false },
   { id: "compliance_clear", label: "Compliance blockers cleared", required: true },
 ];
+
+export function getDraftSignatureDocuments(filters?: {
+  leadId?: string;
+  packetId?: string;
+}): DraftSignatureDocument[] {
+  let items = ensureProgramState().draftSignatureDocuments ?? [];
+  if (filters?.leadId) items = items.filter((d) => d.leadId === filters.leadId);
+  if (filters?.packetId) items = items.filter((d) => d.packetId === filters.packetId);
+  return items.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+export function saveDraftSignatureDocuments(documents: DraftSignatureDocument[]): DraftSignatureDocument[] {
+  const state = ensureProgramState();
+  for (const doc of documents) {
+    const idx = state.draftSignatureDocuments!.findIndex((d) => d.id === doc.id);
+    if (idx === -1) state.draftSignatureDocuments!.unshift(doc);
+    else state.draftSignatureDocuments![idx] = { ...doc, updatedAt: now() };
+  }
+  persistLocalState();
+  return documents;
+}
+
+export function updateProgramPacket(id: string, patch: Partial<LeadPacket>): LeadPacket | null {
+  const state = ensureProgramState();
+  const idx = state.programPackets!.findIndex((p) => p.id === id);
+  if (idx === -1) return null;
+  state.programPackets![idx] = { ...state.programPackets![idx], ...patch, updatedAt: now() };
+  persistLocalState();
+  return state.programPackets![idx];
+}
+
+export function getArchiveFiles(filters?: { archiveId?: string; leadId?: string }): ArchiveFile[] {
+  let items = ensureProgramState().archiveFiles ?? [];
+  if (filters?.archiveId) items = items.filter((f) => f.archiveId === filters.archiveId);
+  if (filters?.leadId) items = items.filter((f) => f.leadId === filters.leadId);
+  return items.sort((a, b) => b.versionNumber - a.versionNumber || b.uploadedAt.localeCompare(a.uploadedAt));
+}
+
+export function saveArchiveFiles(files: ArchiveFile[]): ArchiveFile[] {
+  const state = ensureProgramState();
+  for (const file of files) {
+    const idx = state.archiveFiles!.findIndex((f) => f.id === file.id);
+    if (idx === -1) state.archiveFiles!.unshift(file);
+    else state.archiveFiles![idx] = { ...file, updatedAt: now() };
+  }
+  persistLocalState();
+  return files;
+}
+
+export function getPacketPrintLogs(filters?: { leadId?: string; packetId?: string }): PacketPrintLog[] {
+  let items = ensureProgramState().packetPrintLogs ?? [];
+  if (filters?.leadId) items = items.filter((l) => l.leadId === filters.leadId);
+  if (filters?.packetId) items = items.filter((l) => l.packetId === filters.packetId);
+  return items.sort((a, b) => b.printedAt.localeCompare(a.printedAt));
+}

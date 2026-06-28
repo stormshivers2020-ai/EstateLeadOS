@@ -59,6 +59,11 @@ export interface GovernmentNormalizedRecord {
   interestedPersons?: string[];
   mailingAddress?: string | null;
   confidenceScore: number;
+  sourceCertaintyScore?: number;
+  hasSourceProof?: boolean;
+  fetchMethod?: "live_http" | "snippet_only" | "arcgis_api";
+  contentHash?: string | null;
+  mediaUrl?: string | null;
   rawPayload: Record<string, unknown>;
   title: string;
   snippet: string;

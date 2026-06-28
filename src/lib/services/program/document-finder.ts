@@ -1,8 +1,12 @@
 import { getSessionContext } from "@/lib/config/session";
-import { REQUIRED_PACKET_ITEMS } from "@/lib/constants/required-packet-items";
+import {
+  GOVERNMENT_PROOF_DOCUMENT_TYPES,
+  REQUIRED_PACKET_ITEMS,
+  type RequiredPacketItemDefinition,
+} from "@/lib/constants/required-packet-items";
 import { getFullLeadByIdSync } from "@/lib/services/crm";
-import { getLeadVerificationBundle } from "@/lib/services/verification";
-import type { LeadVerificationBundle } from "@/lib/types/verification";
+import { getLeadVerificationBundleSync } from "@/lib/services/verification/bundle-client";
+import type { EvidenceSource, LeadVerificationBundle } from "@/lib/types/verification";
 import { getDocuments } from "@/lib/services/documents";
 import type { RequiredDocument, RequiredDocumentStatus } from "@/lib/types/program";
 import { saveRequiredDocuments, getRequiredDocuments } from "./local-store";
@@ -15,70 +19,184 @@ function now(): string {
   return new Date().toISOString();
 }
 
-function hasEvidenceType(sources: Array<{ sourceType?: string; sourceName?: string }>, pattern: RegExp): boolean {
-  return sources.some((s) => pattern.test(s.sourceType ?? "") || pattern.test(s.sourceName ?? ""));
+function hasEvidenceType(sources: EvidenceSource[], pattern: RegExp): boolean {
+  return sources.some(
+    (s) =>
+      pattern.test(s.sourceType ?? "")
+      || pattern.test(s.sourceName ?? "")
+      || pattern.test(s.citationLabel ?? ""),
+  );
 }
 
-function resolveStatus(
+function findMatchingEvidence(sources: EvidenceSource[], pattern: RegExp): EvidenceSource | null {
+  return sources.find(
+    (s) =>
+      pattern.test(s.sourceType ?? "")
+      || pattern.test(s.sourceName ?? "")
+      || pattern.test(s.citationLabel ?? ""),
+  ) ?? null;
+}
+
+function linkEvidence(row: RequiredDocument, evidence: EvidenceSource | null): RequiredDocument {
+  if (!evidence) return row;
+  return {
+    ...row,
+    evidenceSourceId: evidence.id,
+    sourceName: evidence.sourceName,
+    sourceUrl: evidence.sourceUrl ?? null,
+  };
+}
+
+function resolveStatusAndEvidence(
   itemType: string,
   evidence: LeadVerificationBundle | null,
-  docs: ReturnType<typeof getDocuments>
-): RequiredDocumentStatus {
+  docs: ReturnType<typeof getDocuments>,
+  leadApproved: boolean,
+): { status: RequiredDocumentStatus; evidence: EvidenceSource | null } {
   const sources = evidence?.evidenceSources ?? [];
   const media = evidence?.propertyMedia ?? [];
   const contacts = evidence?.contactCandidates ?? [];
   const persons = evidence?.persons ?? [];
+  const proofChain = evidence?.proofChain ?? [];
 
   switch (itemType) {
     case "lead_summary":
-      return evidence ? "attached" : "missing";
+      return {
+        status: evidence ? "attached" : "missing",
+        evidence: sources[0] ?? null,
+      };
     case "property_research_sheet":
-      return evidence?.recordHits?.length ? "found" : "needs_manual_research";
-    case "government_evidence_sheet":
-      return sources.length > 0 ? "attached" : "missing";
-    case "probate_estate_sheet":
-      return hasEvidenceType(sources, /probate|estate|wills/i) ? "found" : "needs_manual_research";
-    case "property_assessment":
-      return hasEvidenceType(sources, /assessor|assessment|sdat|property/i) ? "found" : "needs_manual_research";
-    case "tax_record":
-      return hasEvidenceType(sources, /tax/i) ? "found" : "not_applicable";
-    case "deed_transfer_check":
-      return hasEvidenceType(sources, /deed|transfer|land|recorder/i) ? "found" : "needs_manual_research";
+      return {
+        status: evidence?.recordHits?.length ? "found" : "needs_manual_research",
+        evidence: findMatchingEvidence(sources, /assessor|property|gis|parcel/i),
+      };
+    case "government_evidence_sheet": {
+      const ev = sources.find((s) => !/people.?search|zillow|realtor/i.test(s.sourceName)) ?? sources[0];
+      return { status: sources.length > 0 ? "attached" : "missing", evidence: ev ?? null };
+    }
+    case "probate_estate_sheet": {
+      const ev = findMatchingEvidence(sources, /probate|estate|wills|court|inherit/i);
+      return { status: ev ? "found" : "needs_manual_research", evidence: ev };
+    }
+    case "property_assessment": {
+      const ev = findMatchingEvidence(sources, /assessor|assessment|sdat|property/i);
+      return { status: ev ? "found" : "needs_manual_research", evidence: ev };
+    }
+    case "tax_record": {
+      const ev = findMatchingEvidence(sources, /tax/i);
+      return { status: ev ? "found" : "not_applicable", evidence: ev };
+    }
+    case "deed_transfer_check": {
+      const ev = findMatchingEvidence(sources, /deed|transfer|land|recorder/i);
+      return { status: ev ? "found" : "needs_manual_research", evidence: ev };
+    }
     case "gis_parcel_visual":
-      return media.some((m) => /gis|parcel|map/i.test(m.mediaType ?? "")) ? "attached" : "missing";
+      return {
+        status: media.some((m) => /gis|parcel|map/i.test(m.mediaType ?? "")) ? "attached" : "missing",
+        evidence: null,
+      };
     case "property_visual":
-      return media.length > 0 ? "attached" : "missing";
+      return { status: media.length > 0 ? "attached" : "missing", evidence: null };
     case "responsible_party_sheet":
-      return persons.length > 0 || sources.some((s) => /representative|decedent|heir/i.test(s.sourceExcerpt ?? ""))
-        ? "found"
-        : "needs_manual_research";
+      return {
+        status:
+          persons.length > 0 || sources.some((s) => /representative|decedent|heir|executor/i.test(s.sourceExcerpt ?? ""))
+            ? "found"
+            : "needs_manual_research",
+        evidence: findMatchingEvidence(sources, /probate|estate|representative/i),
+      };
     case "contact_candidate_sheet":
-      return contacts.length > 0 ? "found" : "not_applicable";
+      return {
+        status: contacts.length > 0 ? "found" : "not_applicable",
+        evidence: null,
+      };
+    case "source_citation_sheet":
+      return {
+        status: sources.length > 0 ? "attached" : "missing",
+        evidence: sources[0] ?? null,
+      };
     case "compliance_checklist":
-      return docs.some((d) => d.documentCategory === "compliance_documents") ? "found" : "needs_review";
+      return {
+        status: docs.some((d) => d.documentCategory === "compliance_documents") ? "found" : "needs_review",
+        evidence: null,
+      };
     case "outreach_readiness":
-      return "needs_review";
+      return { status: "needs_review", evidence: null };
     case "assignment_readiness":
-      return "needs_review";
+      return { status: "needs_review", evidence: null };
     case "buyer_opportunity_sheet":
-      return "not_started";
+      return { status: "not_started", evidence: null };
     case "deal_calculator_printout":
-      return "needs_manual_research";
+      return { status: "needs_manual_research", evidence: null };
     case "missing_documents_report":
-      return "attached";
-    case "manual_approval_record":
-      return persons.some((p) => p.verificationStatus === "manually_approved") ? "approved" : "needs_review";
+      return { status: "attached", evidence: null };
+    case "manual_approval_record": {
+      const manualStep = proofChain.find((s) => s.kind === "manual_review");
+      const approved =
+        leadApproved
+        || persons.some((p) => p.verificationStatus === "manually_approved")
+        || manualStep?.status === "complete";
+      return { status: approved ? "approved" : "needs_review", evidence: null };
+    }
     case "audit_trail_summary":
-      return (evidence?.actionLogs?.length ?? 0) > 0 ? "attached" : "missing";
+      return {
+        status: (evidence?.actionLogs?.length ?? 0) > 0 ? "attached" : "missing",
+        evidence: null,
+      };
     case "final_review_cover":
-      return "attached";
+      return { status: "attached", evidence: null };
     default:
-      return "not_started";
+      return { status: "not_started", evidence: null };
   }
+}
+
+function buildDocumentRow(
+  item: RequiredPacketItemDefinition,
+  evidence: LeadVerificationBundle | null,
+  docs: ReturnType<typeof getDocuments>,
+  prior: RequiredDocument | undefined,
+  session: ReturnType<typeof getSessionContext>,
+  leadId: string,
+  leadApproved: boolean,
+): RequiredDocument {
+  const { status, evidence: matched } = resolveStatusAndEvidence(
+    item.documentType,
+    evidence,
+    docs,
+    leadApproved,
+  );
+  const row: RequiredDocument = {
+    id: prior?.id ?? uid("rd"),
+    organizationId: session.organizationId,
+    leadId,
+    documentType: item.documentType,
+    documentName: item.documentName,
+    status,
+    sourceName: prior?.sourceName ?? null,
+    sourceUrl: prior?.sourceUrl ?? null,
+    evidenceSourceId: prior?.evidenceSourceId ?? null,
+    uploadedFileUrl: prior?.uploadedFileUrl ?? null,
+    requiredForPacket: item.requiredForPacket,
+    requiredForAttorneyReview: item.requiredForAttorneyReview,
+    requiredForAssignmentReview: item.requiredForAssignmentReview,
+    requiredForBuyerReview: item.requiredForBuyerReview,
+    whyItMatters: item.whyItMatters,
+    whereToLookNext: item.whereToLookNext,
+    notes:
+      status === "missing"
+        ? "Document not found — do not pretend it exists."
+        : status === "needs_manual_research"
+          ? "Official government source not yet attached."
+          : null,
+    createdAt: prior?.createdAt ?? now(),
+    updatedAt: now(),
+  };
+  return linkEvidence(row, matched);
 }
 
 export async function runDocumentFinder(leadId: string): Promise<{
   documents: RequiredDocument[];
+  governmentProofDocuments: RequiredDocument[];
   missingCount: number;
   attachedCount: number;
 }> {
@@ -86,54 +204,52 @@ export async function runDocumentFinder(leadId: string): Promise<{
   const lead = getFullLeadByIdSync(leadId);
   if (!lead) throw new Error("Lead not found");
 
-  let evidence = null;
-  try {
-    evidence = await getLeadVerificationBundle(leadId);
-  } catch {
-    evidence = null;
-  }
+  const evidence = getLeadVerificationBundleSync(leadId, {
+    propertyAddress: lead.propertyAddress ?? "",
+    ownerName: lead.ownerName,
+    parcelId: lead.parcelId,
+  });
 
   const docs = getDocuments({ leadId });
   const existing = getRequiredDocuments(leadId);
-  const results: RequiredDocument[] = [];
+  const leadApproved = lead.dataConfidenceScore >= 75 || lead.pipelineStage === "compliance_review";
 
-  for (const item of REQUIRED_PACKET_ITEMS) {
-    const status = resolveStatus(item.documentType, evidence, docs);
-    const prior = existing.find((e) => e.documentType === item.documentType);
-    const row: RequiredDocument = {
-      id: prior?.id ?? uid("rd"),
-      organizationId: session.organizationId,
+  const results = REQUIRED_PACKET_ITEMS.map((item) =>
+    buildDocumentRow(
+      item,
+      evidence,
+      docs,
+      existing.find((e) => e.documentType === item.documentType),
+      session,
       leadId,
-      documentType: item.documentType,
-      documentName: item.documentName,
-      status,
-      sourceName: prior?.sourceName ?? null,
-      sourceUrl: prior?.sourceUrl ?? null,
-      evidenceSourceId: prior?.evidenceSourceId ?? null,
-      uploadedFileUrl: prior?.uploadedFileUrl ?? null,
-      requiredForPacket: item.requiredForPacket,
-      requiredForAssignmentReview: item.requiredForAssignmentReview,
-      requiredForBuyerReview: item.requiredForBuyerReview,
-      whyItMatters: item.whyItMatters,
-      whereToLookNext: item.whereToLookNext,
-      notes: status === "missing" ? "Document not found — do not pretend it exists." : null,
-      createdAt: prior?.createdAt ?? now(),
-      updatedAt: now(),
-    };
-    results.push(row);
-  }
+      leadApproved,
+    ),
+  );
 
   saveRequiredDocuments(results);
-  const missingCount = results.filter((d) =>
-    ["missing", "needs_manual_research", "needs_upload", "not_started"].includes(d.status)
-  ).length;
-  const attachedCount = results.filter((d) => ["found", "attached", "approved"].includes(d.status)).length;
 
-  return { documents: results, missingCount, attachedCount };
+  const governmentProofDocuments = results.filter((d) =>
+    (GOVERNMENT_PROOF_DOCUMENT_TYPES as readonly string[]).includes(d.documentType),
+  );
+
+  const missingCount = results.filter((d) =>
+    ["missing", "needs_manual_research", "needs_upload", "not_started"].includes(d.status),
+  ).length;
+  const attachedCount = results.filter((d) =>
+    ["found", "attached", "approved"].includes(d.status),
+  ).length;
+
+  return { documents: results, governmentProofDocuments, missingCount, attachedCount };
+}
+
+export function getGovernmentProofDocuments(leadId: string): RequiredDocument[] {
+  return getRequiredDocuments(leadId).filter((d) =>
+    (GOVERNMENT_PROOF_DOCUMENT_TYPES as readonly string[]).includes(d.documentType),
+  );
 }
 
 export function getMissingDocuments(leadId: string): RequiredDocument[] {
   return getRequiredDocuments(leadId).filter((d) =>
-    ["missing", "needs_manual_research", "needs_upload", "not_started"].includes(d.status)
+    ["missing", "needs_manual_research", "needs_upload", "not_started"].includes(d.status),
   );
 }

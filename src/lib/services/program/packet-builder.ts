@@ -1,5 +1,9 @@
 import { GLOBAL_DISCLAIMER } from "@/lib/constants/disclaimer";
-import { PACKET_TYPE_LABELS, BUYER_PACKET_WARNING } from "@/lib/types/program";
+import {
+  PACKET_TYPE_LABELS,
+  BUYER_PACKET_WARNING,
+  PRIMARY_PACKET_TYPES,
+} from "@/lib/types/program";
 import type {
   AssignmentReadiness,
   LeadPacket,
@@ -10,10 +14,12 @@ import type {
 } from "@/lib/types/program";
 import { getSessionContext } from "@/lib/config/session";
 import { getFullLeadByIdSync } from "@/lib/services/crm";
-import { getLeadVerificationBundle } from "@/lib/services/verification";
-import { getNextPacketVersion, saveProgramPacket } from "./local-store";
-import { getRequiredDocuments } from "./local-store";
+import { getLatestCalculation } from "@/lib/services/deal-calculator";
+import { getLeadVerificationBundleSync } from "@/lib/services/verification/bundle-client";
+import { getNextPacketVersion, saveProgramPacket, getAssignmentReadiness } from "./local-store";
 import { runDocumentFinder } from "./document-finder";
+import { buildAcquisitionSections, isAcquisitionStylePacket } from "./acquisition-sections";
+import { generateDraftSignatureDocuments } from "./draft-signature-builder";
 
 function uid(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -63,41 +69,45 @@ function derivePacketStatus(
   if (missingCount > 0) return "missing_documents";
   if (packetType === "buyer_investor_opportunity") return "ready_for_buyer_review";
   if (packetType === "assignment_readiness") return "assignment_review_ready";
-  if (packetType === "seller_outreach_prep") return manuallyApproved ? "ready_for_seller_outreach_review" : "review_needed";
+  if (packetType === "seller_review" || packetType === "seller_outreach_prep") {
+    return manuallyApproved ? "ready_for_seller_outreach_review" : "review_needed";
+  }
   if (packetType === "attorney_title_review") return "review_needed";
+  if (packetType === "acquisition_preparation") return "ready_for_internal_review";
   return "ready_for_internal_review";
 }
 
-export async function buildLeadPacket(input: {
-  leadId: string;
+function buildLegacySections(input: {
+  packetId: string;
   packetType: LeadPacketType;
+  lead: ReturnType<typeof getFullLeadByIdSync>;
+  evidence: ReturnType<typeof getLeadVerificationBundleSync>;
+  documents: RequiredDocument[];
+  missingItems: RequiredDocument[];
+  missingCount: number;
+  version: number;
+  confidence: number;
   assignmentReadiness?: AssignmentReadiness | null;
-}): Promise<LeadPacket> {
-  const session = getSessionContext();
-  const lead = getFullLeadByIdSync(input.leadId);
-  if (!lead) throw new Error("Lead not found");
+}): LeadPacketSection[] {
+  const {
+    packetId,
+    packetType,
+    lead,
+    evidence,
+    documents,
+    missingItems,
+    missingCount,
+    version,
+    confidence,
+    assignmentReadiness,
+  } = input;
 
-  const { documents, missingCount } = await runDocumentFinder(input.leadId);
-  let evidence = null;
-  try {
-    evidence = await getLeadVerificationBundle(input.leadId);
-  } catch {
-    evidence = null;
-  }
-
-  const packetId = uid("lp");
-  const version = getNextPacketVersion(input.leadId, input.packetType);
-  const confidence = lead.dataConfidenceScore ?? (evidence?.evidenceSources?.length ? 55 : 0);
-  const manuallyApproved = evidence?.persons?.some((p) => p.verificationStatus === "manually_approved") ?? false;
+  if (!lead) return [];
 
   const sections: LeadPacketSection[] = [];
-  const missingItems = documents.filter((d) =>
-    ["missing", "needs_manual_research", "needs_upload"].includes(d.status)
-  );
 
-  // Cover page
   const coverContent = `
-    <h1>EstateLeadOS — ${escapeHtml(PACKET_TYPE_LABELS[input.packetType])}</h1>
+    <h1>EstateLeadOS — ${escapeHtml(PACKET_TYPE_LABELS[packetType])}</h1>
     <p><strong>Powered by SCS Nova</strong></p>
     <p>Lead: ${escapeHtml(lead.propertyAddress ?? lead.id)}</p>
     <p>County/State: ${escapeHtml(lead.county ?? "—")}, ${escapeHtml(lead.state ?? "—")}</p>
@@ -108,7 +118,6 @@ export async function buildLeadPacket(input: {
   `;
   sections.push(buildSection(packetId, "cover", "Cover Page", coverContent, "attached"));
 
-  // Lead summary
   sections.push(
     buildSection(
       packetId,
@@ -122,7 +131,6 @@ export async function buildLeadPacket(input: {
     )
   );
 
-  // Evidence citations
   const evidenceHtml =
     evidence?.evidenceSources?.length
       ? evidence.evidenceSources
@@ -134,9 +142,16 @@ export async function buildLeadPacket(input: {
           )
           .join("")
       : "<p>No government evidence attached yet.</p>";
-  sections.push(buildSection(packetId, "evidence", "Government Source Citations", evidenceHtml, evidence?.evidenceSources?.length ? "attached" : "missing"));
+  sections.push(
+    buildSection(
+      packetId,
+      "evidence",
+      "Government Source Citations",
+      evidenceHtml,
+      evidence?.evidenceSources?.length ? "attached" : "missing"
+    )
+  );
 
-  // Property visuals
   const visualHtml =
     evidence?.propertyMedia?.length
       ? evidence.propertyMedia
@@ -147,9 +162,16 @@ export async function buildLeadPacket(input: {
           )
           .join("")
       : "<p>No property visual attached.</p>";
-  sections.push(buildSection(packetId, "visuals", "Property Visuals", visualHtml, evidence?.propertyMedia?.length ? "attached" : "missing"));
+  sections.push(
+    buildSection(
+      packetId,
+      "visuals",
+      "Property Visuals",
+      visualHtml,
+      evidence?.propertyMedia?.length ? "attached" : "missing"
+    )
+  );
 
-  // Contact candidates
   const contactHtml =
     evidence?.contactCandidates?.length
       ? evidence.contactCandidates
@@ -162,20 +184,34 @@ export async function buildLeadPacket(input: {
       : "<p>No contact candidates.</p>";
   sections.push(buildSection(packetId, "contacts", "Contact Candidates", contactHtml, "found"));
 
-  // Document checklist
   const checklistHtml = renderDocumentChecklist(documents);
-  sections.push(buildSection(packetId, "checklist", "Document Checklist", checklistHtml, missingCount === 0 ? "attached" : "missing", missingItems.map((m) => m.documentName)));
+  sections.push(
+    buildSection(
+      packetId,
+      "checklist",
+      "Document Checklist",
+      checklistHtml,
+      missingCount === 0 ? "attached" : "missing",
+      missingItems.map((m) => m.documentName)
+    )
+  );
 
-  // Missing documents report
   const missingHtml =
     missingItems.length > 0
       ? `<ul>${missingItems.map((m) => `<li><strong>${escapeHtml(m.documentName)}</strong> — ${escapeHtml(m.whyItMatters ?? "")}<br/>Look next: ${escapeHtml(m.whereToLookNext ?? "")}</li>`).join("")}</ul>`
       : "<p>All required documents found or attached.</p>";
-  sections.push(buildSection(packetId, "missing", "Missing Documents Report", missingHtml, missingItems.length ? "missing" : "attached"));
+  sections.push(
+    buildSection(
+      packetId,
+      "missing",
+      "Missing Documents Report",
+      missingHtml,
+      missingItems.length ? "missing" : "attached"
+    )
+  );
 
-  // Assignment readiness (if applicable)
-  if (input.packetType === "assignment_readiness" || input.packetType === "full_lead_archive") {
-    const ar = input.assignmentReadiness;
+  if (packetType === "assignment_readiness" || packetType === "full_lead_archive") {
+    const ar = assignmentReadiness;
     const arHtml = ar
       ? `<ul>${ar.checklist.map((c) => `<li>${c.complete ? "✓" : "○"} ${escapeHtml(c.label)}</li>`).join("")}</ul>
          <p>Target Assignment Fee: ${ar.targetAssignmentFee ?? "—"}</p>
@@ -185,8 +221,7 @@ export async function buildLeadPacket(input: {
     sections.push(buildSection(packetId, "assignment", "Assignment Readiness", arHtml, ar ? "needs_review" : "not_started"));
   }
 
-  // Buyer packet warning
-  if (input.packetType === "buyer_investor_opportunity") {
+  if (packetType === "buyer_investor_opportunity") {
     sections.push(
       buildSection(
         packetId,
@@ -199,25 +234,96 @@ export async function buildLeadPacket(input: {
     );
   }
 
-  // Audit trail
   const auditHtml =
     evidence?.actionLogs?.length
       ? `<ul>${evidence.actionLogs.slice(0, 20).map((l) => `<li>${escapeHtml(l.actionType)} — ${escapeHtml(l.actorUserName ?? "")} — ${new Date(l.createdAt).toLocaleString()}</li>`).join("")}</ul>`
       : "<p>No audit events recorded.</p>";
-  sections.push(buildSection(packetId, "audit", "Audit Trail Summary", auditHtml, evidence?.actionLogs?.length ? "attached" : "missing"));
+  sections.push(
+    buildSection(
+      packetId,
+      "audit",
+      "Audit Trail Summary",
+      auditHtml,
+      evidence?.actionLogs?.length ? "attached" : "missing"
+    )
+  );
 
   sections.push(
     buildSection(packetId, "disclaimer", "Disclaimer", `<p>${escapeHtml(GLOBAL_DISCLAIMER)}</p>`, "attached")
   );
 
-  const printableHtml = renderPrintableHtml(PACKET_TYPE_LABELS[input.packetType], sections, lead.propertyAddress ?? lead.id);
+  return sections;
+}
+
+export async function buildLeadPacket(input: {
+  leadId: string;
+  packetType: LeadPacketType;
+  assignmentReadiness?: AssignmentReadiness | null;
+  saveAsDraft?: boolean;
+}): Promise<LeadPacket> {
+  const session = getSessionContext();
+  const lead = getFullLeadByIdSync(input.leadId);
+  if (!lead) throw new Error("Lead not found");
+
+  const { documents, missingCount } = await runDocumentFinder(input.leadId);
+  const evidence = getLeadVerificationBundleSync(input.leadId, {
+    propertyAddress: lead.propertyAddress ?? "",
+    ownerName: lead.ownerName,
+    parcelId: lead.parcelId,
+  });
+
+  const packetId = uid("lp");
+  const version = getNextPacketVersion(input.leadId, input.packetType);
+  const confidence = lead.dataConfidenceScore ?? (evidence?.evidenceSources?.length ? 55 : 0);
+  const manuallyApproved = evidence?.persons?.some((p) => p.verificationStatus === "manually_approved") ?? false;
+  const missingItems = documents.filter((d) =>
+    ["missing", "needs_manual_research", "needs_upload"].includes(d.status)
+  );
+
+  const ar = input.assignmentReadiness ?? getAssignmentReadiness(input.leadId);
+  const calculation = getLatestCalculation(input.leadId);
+  const draftDocuments = generateDraftSignatureDocuments({ leadId: input.leadId, packetId });
+  const title = PACKET_TYPE_LABELS[input.packetType];
+
+  const useAcquisitionSections =
+    isAcquisitionStylePacket(input.packetType) && input.packetType !== "buyer_investor_opportunity";
+
+  const sections = useAcquisitionSections
+    ? buildAcquisitionSections({
+        packetId,
+        packetTitle: title,
+        lead,
+        evidence,
+        documents,
+        missingItems,
+        missingCount,
+        version,
+        confidence,
+        assignmentReadiness: ar,
+        calculation,
+        draftDocuments,
+      })
+    : buildLegacySections({
+        packetId,
+        packetType: input.packetType,
+        lead,
+        evidence,
+        documents,
+        missingItems,
+        missingCount,
+        version,
+        confidence,
+        assignmentReadiness: ar,
+      });
+
+  const printableHtml = renderPrintableHtml(title, sections, lead.propertyAddress ?? lead.id);
 
   const packet: LeadPacket = {
     id: packetId,
     organizationId: session.organizationId,
     leadId: input.leadId,
     packetType: input.packetType,
-    packetStatus: derivePacketStatus(input.packetType, missingCount, false, manuallyApproved),
+    packetStatus: input.saveAsDraft ? "draft" : derivePacketStatus(input.packetType, missingCount, false, manuallyApproved),
     packetVersion: version,
     generatedBy: session.userName,
     generatedAt: now(),
@@ -228,7 +334,8 @@ export async function buildLeadPacket(input: {
     confidenceScore: confidence,
     verificationStatus: manuallyApproved ? "manually_approved" : "pending_review",
     complianceStatus: missingCount > 0 ? "incomplete" : "review_needed",
-    assignmentReadinessStatus: input.assignmentReadiness?.status ?? "not_started",
+    assignmentReadinessStatus: ar?.status ?? "not_started",
+    attorneyReviewStatus: "not_started",
     buyerReviewStatus: input.packetType === "buyer_investor_opportunity" ? "pending_manual_share" : "not_started",
     payoutReadinessStatus: "not_started",
     notes: null,
@@ -251,7 +358,7 @@ function renderDocumentChecklist(documents: RequiredDocument[]): string {
   </tbody></table>`;
 }
 
-function renderPrintableHtml(title: string, sections: LeadPacketSection[], address: string): string {
+export function renderPrintableHtml(title: string, sections: LeadPacketSection[], address: string): string {
   const styles = `
     @media print { .no-print { display: none; } body { font-family: Georgia, serif; font-size: 11pt; } }
     body { max-width: 800px; margin: 0 auto; padding: 24px; color: #111; }
@@ -260,6 +367,8 @@ function renderPrintableHtml(title: string, sections: LeadPacketSection[], addre
     .packet-section { page-break-inside: avoid; margin-bottom: 16px; border-bottom: 1px solid #ddd; padding-bottom: 12px; }
     .section-status { font-size: 9pt; color: #666; }
     .disclaimer, .warning { font-size: 9pt; color: #555; border-left: 3px solid #c9a227; padding-left: 8px; margin: 12px 0; }
+    .draft-banner { background: #fef3cd; border: 2px solid #c9a227; padding: 10px; margin: 12px 0; font-size: 9pt; }
+    .draft-doc { border: 1px solid #ddd; padding: 10px; margin: 8px 0; }
     .citation { margin: 8px 0; padding: 8px; background: #f8f8f8; font-size: 10pt; }
     .checklist { width: 100%; border-collapse: collapse; font-size: 10pt; }
     .checklist th, .checklist td { border: 1px solid #ccc; padding: 4px 8px; text-align: left; }
@@ -268,18 +377,15 @@ function renderPrintableHtml(title: string, sections: LeadPacketSection[], addre
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${escapeHtml(title)} — ${escapeHtml(address)}</title>
     <style>${styles}</style></head><body>
-    ${sections.map((s) => s.sectionContent.startsWith("<section") ? s.sectionContent : sectionHtml(s.sectionTitle, s.sectionContent, s.sectionStatus)).join("")}
+    ${sections.map((s) => (s.sectionContent.startsWith("<section") || s.sectionContent.startsWith("<h1") ? s.sectionContent : sectionHtml(s.sectionTitle, s.sectionContent, s.sectionStatus))).join("")}
     <p class="nova-brand">EstateLeadOS — Powered by SCS Nova</p>
     </body></html>`;
 }
 
 export function getPacketTypes(): LeadPacketType[] {
-  return [
-    "internal_review",
-    "seller_outreach_prep",
-    "buyer_investor_opportunity",
-    "assignment_readiness",
-    "attorney_title_review",
-    "full_lead_archive",
-  ];
+  return [...PRIMARY_PACKET_TYPES];
+}
+
+export function generatePdfPlaceholderUrl(packetId: string): string {
+  return `/api/packets/${packetId}?format=pdf&status=placeholder`;
 }

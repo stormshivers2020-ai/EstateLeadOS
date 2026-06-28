@@ -15,16 +15,17 @@ export const ATTORNEY_REVIEW_QUESTIONS = [
 ];
 
 export const REDACTION_CHECKLIST = [
-  { id: "internal_notes", label: "Remove internal notes" },
-  { id: "rejected_sources", label: "Remove rejected sources" },
-  { id: "rejected_contacts", label: "Remove rejected contact candidates" },
-  { id: "attorney_private", label: "Remove attorney-private notes" },
-  { id: "buyer_disclosure", label: "Confirm buyer-facing disclosure language" },
-  { id: "assignment_language", label: "Confirm assignment/equitable-interest language" },
-  { id: "attorney_status", label: "Confirm attorney review status" },
-  { id: "contact_instructions", label: "Confirm contact instructions" },
-  { id: "no_unsupported", label: "Confirm no unsupported claims" },
-  { id: "no_guarantees", label: "Confirm no legal guarantees" },
+  { id: "internal_notes", label: "Internal notes removed" },
+  { id: "attorney_private", label: "Attorney-private notes removed or approved" },
+  { id: "rejected_sources", label: "Rejected sources removed" },
+  { id: "rejected_contacts", label: "Rejected contact candidates removed" },
+  { id: "no_unsupported", label: "Unsupported claims removed" },
+  { id: "buyer_disclosure", label: "Buyer-facing disclosure language reviewed" },
+  { id: "assignment_language", label: "Assignment/equitable-interest language reviewed" },
+  { id: "attorney_status", label: "Attorney review status confirmed" },
+  { id: "contact_instructions", label: "Contact instructions confirmed" },
+  { id: "no_guarantees", label: "No legal guarantees included" },
+  { id: "no_profit_guarantees", label: "No profit guarantees included" },
 ];
 
 export const EMAIL_TEMPLATES = [
@@ -99,11 +100,29 @@ export const UPLOAD_CATEGORY_LABELS: Record<string, string> = {
   attorney_reviewed_packet: "Attorney Reviewed Packet",
   attorney_approval_letter: "Attorney Approval Letter",
   attorney_redlines: "Attorney Redlines",
+  attorney_comments: "Attorney Comments",
   attorney_fee_agreement: "Attorney Fee Agreement",
   attorney_engagement_agreement: "Attorney Engagement Agreement",
   title_company_notes: "Title Company Notes",
+  revised_draft_documents: "Revised Draft Documents",
+  signed_documents: "Signed Documents",
   disclosure_checklist: "Disclosure Checklist",
   revised_buyer_packet: "Revised Buyer Packet",
   revised_assignment_packet: "Revised Assignment Packet",
   other_review_document: "Other Review Document",
 };
+
+export const ATTORNEY_REVIEW_WORKFLOW_STEPS = [
+  { step: 1, label: "Select packet for attorney review", key: "select_packet" },
+  { step: 2, label: "Add attorney information", key: "attorney_info" },
+  { step: 3, label: "Print or export attorney review packet", key: "print_export" },
+  { step: 4, label: "Track delivery to attorney", key: "delivery" },
+  { step: 5, label: "Track attorney comments", key: "comments" },
+  { step: 6, label: "Track changes requested", key: "changes" },
+  { step: 7, label: "Track attorney approval status", key: "approval" },
+  { step: 8, label: "Track fee / percentage agreement", key: "fee_agreement" },
+  { step: 9, label: "Upload attorney-reviewed file", key: "upload_reviewed" },
+  { step: 10, label: "Upload signed attorney fee agreement if applicable", key: "upload_fee_agreement" },
+  { step: 11, label: "Update document statuses", key: "document_statuses" },
+  { step: 12, label: "Move reviewed files to Final Archive", key: "final_archive" },
+] as const;

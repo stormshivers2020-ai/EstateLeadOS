@@ -2,22 +2,49 @@ import "server-only";
 
 import type { AttorneyReview } from "@/lib/types/distribution";
 import { MANUAL_OVERRIDE_TEXT } from "@/lib/types/distribution";
-import { getAttorneyReview } from "./local-store";
+import { getFullLeadByIdSync } from "@/lib/services/crm";
+import { getLeadComplianceContext, runLeadComplianceCheck } from "@/lib/services/compliance";
+import type { DealType, AcquisitionStrategy } from "@/lib/types/compliance";
+import { getAttorneyReview, getAttorneyCompensation, getDistributionPackets } from "./local-store";
 import { isAttorneyApproved } from "./attorney-review";
-import { getAttorneyCompensation } from "./local-store";
 import { validateCompensationApproval } from "./attorney-compensation";
-import { getDistributionPackets } from "./local-store";
 
 export interface ApprovalGateResult {
   allowed: boolean;
   blockers: string[];
   requiresOverride: boolean;
   overrideAcknowledged: boolean;
+  complianceBlockers: string[];
+}
+
+export function checkComplianceBlockers(leadId: string): string[] {
+  const lead = getFullLeadByIdSync(leadId);
+  if (!lead) return [];
+
+  const ctx = getLeadComplianceContext(leadId);
+  const result = runLeadComplianceCheck({
+    leadId,
+    stateAbbr: lead.state,
+    countyName: lead.county,
+    dealType: (ctx?.dealType ?? "probate_estate") as DealType,
+    acquisitionStrategy: (ctx?.acquisitionStrategy ?? "contract_assignment") as AcquisitionStrategy,
+    ownerIdentityVerified: ctx?.ownerIdentityVerified ?? false,
+    sourceDocumentsAttached: ctx?.sourceDocumentsAttached ?? false,
+    communicationLogActive: ctx?.communicationLogActive ?? false,
+    acknowledgementsComplete: (ctx?.acknowledgements?.length ?? 0) > 0,
+  });
+
+  if (!result) return [];
+
+  return result.activeBlockers
+    .filter((b) => b.status === "active" && (b.severity === "blocking" || b.severity === "restricted"))
+    .map((b) => b.blockerMessage);
 }
 
 export function checkAttorneyApprovalGate(leadId: string): ApprovalGateResult {
   const review = getAttorneyReview(leadId);
   const blockers: string[] = [];
+  const complianceBlockers = checkComplianceBlockers(leadId);
 
   if (!review) {
     blockers.push("Attorney Review has not been started.");
@@ -26,6 +53,7 @@ export function checkAttorneyApprovalGate(leadId: string): ApprovalGateResult {
       blockers,
       requiresOverride: true,
       overrideAcknowledged: false,
+      complianceBlockers,
     };
   }
 
@@ -35,7 +63,7 @@ export function checkAttorneyApprovalGate(leadId: string): ApprovalGateResult {
   if (!isAttorneyApproved(review.reviewStatus)) {
     if (!review.manualOverrideAcknowledged) {
       blockers.push(
-        "Attorney Review has not been completed. You may continue only after uploading attorney-reviewed documents or using a manual override acknowledgement. EstateLeadOS does not provide legal approval."
+        "Attorney Review has not been completed. Upload attorney-reviewed documents or acknowledge manual override before external distribution. EstateLeadOS does not provide legal approval."
       );
     }
   }
@@ -67,11 +95,16 @@ export function checkAttorneyApprovalGate(leadId: string): ApprovalGateResult {
     blockers.push("Redaction checklist incomplete on distribution packet.");
   }
 
+  if (complianceBlockers.length > 0) {
+    blockers.push(...complianceBlockers.map((m) => `Compliance: ${m}`));
+  }
+
   return {
     allowed: attorneyOk && blockers.length === 0,
     blockers,
     requiresOverride: !isAttorneyApproved(review.reviewStatus),
     overrideAcknowledged: review.manualOverrideAcknowledged ?? false,
+    complianceBlockers,
   };
 }
 
@@ -84,4 +117,20 @@ export function canApproveDistributionSend(leadId: string, packetStatus: string)
     gate.allowed = false;
   }
   return gate;
+}
+
+export function getAttorneyGateSummary(leadId: string): {
+  review: AttorneyReview | null;
+  attorneyApproved: boolean;
+  overrideAcknowledged: boolean;
+  complianceClear: boolean;
+} {
+  const review = getAttorneyReview(leadId);
+  const gate = checkAttorneyApprovalGate(leadId);
+  return {
+    review,
+    attorneyApproved: review ? isAttorneyApproved(review.reviewStatus) : false,
+    overrideAcknowledged: review?.manualOverrideAcknowledged ?? false,
+    complianceClear: gate.complianceBlockers.length === 0,
+  };
 }

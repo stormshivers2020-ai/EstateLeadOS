@@ -70,10 +70,12 @@ export type ProcessStepStatus =
   | "in_progress"
   | "complete"
   | "blocked"
-  | "needs_approval"
+  | "needs_manual_review"
   | "needs_attorney_review"
   | "ready_to_print"
-  | "ready_to_send"
+  | "ready_to_upload"
+  | "ready_for_archive"
+  | "ready_for_distribution"
   | "archived"
   | "rejected";
 
@@ -143,11 +145,19 @@ export interface ProcessStepStatusRecord {
   id: string;
   organizationId: string;
   leadId: string;
+  packetId?: string | null;
   stepNumber: number;
   stepName: string;
   status: ProcessStepStatus;
-  blockerCount: number;
   nextAction?: string | null;
+  blockerCount: number;
+  blockerReason?: string | null;
+  requiredDocumentsCount: number;
+  completedDocumentsCount: number;
+  manualApprovalRequired: boolean;
+  attorneyReviewRequired: boolean;
+  approvalStatus?: string | null;
+  attorneyReviewStatus?: string | null;
   relatedModule?: string | null;
   relatedFinancialImpact?: number | null;
   completedAt?: string | null;

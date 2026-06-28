@@ -1,20 +1,24 @@
+import { Suspense } from "react";
 import { AppShell } from "@/components/layout/AppShell";
-import { ArchiveClient } from "@/components/program/ArchiveClient";
-import { ProcessStepMap } from "@/components/analytics/ProcessStepMap";
-import { getCommandCenterAnalytics } from "@/lib/services/analytics";
+import { ArchiveHubClient } from "@/components/program/ArchiveHubClient";
+import { DealCommandStepperSection } from "@/components/deal-command/DealCommandWizardClient";
+import { FIRST_ARCHIVE_STEP } from "@/lib/constants/process-steps";
 
 export default function ArchivePage() {
-  const analytics = getCommandCenterAnalytics();
-
   return (
     <AppShell
-      title="Archive"
-      subtitle="Lead packet archive — printable, versioned, review-ready — Powered by SCS Nova"
+      title="Archives"
+      subtitle="Initial Review Archive (Step 14) and Final Attorney-Reviewed Archive (Step 19) — EstateLeadOS Powered by SCS Nova"
     >
       <div className="mb-6">
-        <ProcessStepMap aggregateCounts={analytics.stepCounts} currentStep={13} compact />
+        <DealCommandStepperSection
+          currentStep={FIRST_ARCHIVE_STEP}
+          sectionSteps={[12, 13, 14]}
+        />
       </div>
-      <ArchiveClient />
+      <Suspense fallback={<p className="text-sm text-slate-400">Loading archives…</p>}>
+        <ArchiveHubClient defaultTab="initial_review" />
+      </Suspense>
     </AppShell>
   );
 }

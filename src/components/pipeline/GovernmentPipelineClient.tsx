@@ -93,6 +93,13 @@ export function GovernmentPipelineClient() {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-lg border border-sky-800/30 bg-sky-950/20 px-4 py-3 text-sm text-sky-100">
+        <p className="font-medium">Live Source Certainty</p>
+        <p className="mt-1 text-xs text-sky-200/80">
+          County runs pull official records, live-fetch .gov URLs, query ArcGIS parcel APIs (Harford proof engine), and score source certainty before creating leads. Leads without government proof are rejected — not created from search snippets alone.
+        </p>
+      </div>
+
       <div className="rounded-lg border border-emerald-800/30 bg-emerald-950/20 px-4 py-3 text-sm text-emerald-100">
         <div className="flex items-start gap-2">
           <Landmark className="mt-0.5 h-4 w-4 shrink-0" />

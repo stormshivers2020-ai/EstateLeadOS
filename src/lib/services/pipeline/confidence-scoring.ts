@@ -42,6 +42,18 @@ export function scorePipelineRecord(record: NormalizedGovernmentRecord): Confide
     add("Property visual from official GIS/assessor", 10);
   }
 
+  if (record.source_certainty_score && record.source_certainty_score >= 70) {
+    add("Live source certainty score", Math.min(20, Math.floor(record.source_certainty_score / 5)));
+  }
+
+  if (record.has_source_proof) {
+    add("Source proof verified — lead-eligible", 10);
+  }
+
+  if (record.fetch_method === "live_http" || record.fetch_method === "arcgis_api") {
+    add("Live government fetch (not snippet-only)", 12);
+  }
+
   if (record.mailing_address && /official|gov|probate|assessor|deed/i.test(record.source_type)) {
     add("Mailing address from official source", 10);
   }

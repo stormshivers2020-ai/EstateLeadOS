@@ -111,6 +111,7 @@ export interface LocalAppState {
   automationRuns: import("@/lib/types/pipeline").AutomationRunRecord[];
   programPackets: import("@/lib/types/program").LeadPacket[];
   leadArchives: import("@/lib/types/program").LeadArchive[];
+  archiveFiles: import("@/lib/types/program").ArchiveFile[];
   requiredDocuments: import("@/lib/types/program").RequiredDocument[];
   assignmentReadiness: import("@/lib/types/program").AssignmentReadiness[];
   reviewQueueItems: import("@/lib/types/program").ReviewQueueItem[];
@@ -184,6 +185,7 @@ function buildDemoState(): LocalAppState {
     automationRuns: [],
     programPackets: [],
     leadArchives: [],
+    archiveFiles: [],
     requiredDocuments: [],
     assignmentReadiness: [],
     reviewQueueItems: [],
@@ -253,6 +255,7 @@ function buildFreshState(): LocalAppState {
     automationRuns: [],
     programPackets: [],
     leadArchives: [],
+    archiveFiles: [],
     requiredDocuments: [],
     assignmentReadiness: [],
     reviewQueueItems: [],
@@ -296,6 +299,7 @@ function stripDemoFromStored(stored: LocalAppState): LocalAppState {
   fresh.automationRuns = stored.automationRuns ?? [];
   fresh.programPackets = stored.programPackets ?? [];
   fresh.leadArchives = stored.leadArchives ?? [];
+  fresh.archiveFiles = stored.archiveFiles ?? [];
   fresh.requiredDocuments = stored.requiredDocuments ?? [];
   fresh.assignmentReadiness = stored.assignmentReadiness ?? [];
   fresh.reviewQueueItems = stored.reviewQueueItems ?? [];
@@ -368,6 +372,7 @@ export function getLocalState(): LocalAppState {
     if (!memoryState.automationRuns) memoryState.automationRuns = [];
     if (!memoryState.programPackets) memoryState.programPackets = [];
     if (!memoryState.leadArchives) memoryState.leadArchives = [];
+    if (!memoryState.archiveFiles) memoryState.archiveFiles = [];
     if (!memoryState.requiredDocuments) memoryState.requiredDocuments = [];
     if (!memoryState.assignmentReadiness) memoryState.assignmentReadiness = [];
     if (!memoryState.reviewQueueItems) memoryState.reviewQueueItems = [];

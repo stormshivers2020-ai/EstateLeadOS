@@ -10,6 +10,10 @@ import {
   updateCompensation,
   getDistributionAuditLogs,
   uploadAttorneyFile,
+  inferWorkflowSteps,
+  selectPacketForAttorneyReview,
+  moveReviewedFilesToFinalArchive,
+  listLeadPacketsForReview,
 } from "@/lib/services/distribution/index";
 
 export async function GET(
@@ -20,7 +24,9 @@ export async function GET(
   const review = getAttorneyReview(leadId);
   const compensation = getAttorneyCompensation(leadId);
   const audit = getDistributionAuditLogs(leadId);
-  return NextResponse.json({ review, compensation, audit });
+  const packets = listLeadPacketsForReview(leadId);
+  const workflowSteps = inferWorkflowSteps(review, compensation);
+  return NextResponse.json({ review, compensation, audit, packets, workflowSteps });
 }
 
 export async function POST(
@@ -33,16 +39,24 @@ export async function POST(
   try {
     if (body.action === "build_review_file") {
       const review = await buildAttorneyReviewFile(leadId, body.packetId);
-      return NextResponse.json({ review });
+      return NextResponse.json({ review, message: "Attorney review file built." });
+    }
+    if (body.action === "select_packet") {
+      const review = selectPacketForAttorneyReview(leadId, body.packetId);
+      return NextResponse.json({ review, message: "Packet selected for attorney review." });
     }
     if (body.action === "mark_sent") {
-      return NextResponse.json({ review: markSentToAttorney(leadId) });
+      return NextResponse.json({ review: markSentToAttorney(leadId), message: "Marked as sent / delivered manually." });
     }
     if (body.action === "update") {
       return NextResponse.json({ review: updateAttorneyReview(leadId, body.patch) });
     }
     if (body.action === "manual_override") {
       return NextResponse.json({ review: acknowledgeManualOverride(leadId) });
+    }
+    if (body.action === "move_final_archive") {
+      const result = moveReviewedFilesToFinalArchive(leadId);
+      return NextResponse.json({ ...result, review: getAttorneyReview(leadId) });
     }
     if (body.action === "upload") {
       const upload = await uploadAttorneyFile({
@@ -54,13 +68,14 @@ export async function POST(
         notes: body.notes,
         packetId: body.packetId,
       });
-      return NextResponse.json({ upload, review: getAttorneyReview(leadId) });
+      return NextResponse.json({ upload, review: getAttorneyReview(leadId), message: "File uploaded and versioned." });
     }
     if (body.action === "update_compensation") {
       const review = getAttorneyReview(leadId);
       if (!review) return NextResponse.json({ error: "Start attorney review first" }, { status: 400 });
       getOrCreateCompensation(leadId, review.id);
-      return NextResponse.json({ compensation: updateCompensation(leadId, body.patch) });
+      const compensation = updateCompensation(leadId, body.patch);
+      return NextResponse.json({ compensation, message: "Compensation terms recorded (not legal advice)." });
     }
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {

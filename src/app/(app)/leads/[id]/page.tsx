@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { LeadDetailView } from "@/components/crm/LeadDetailView";
 import { LeadDetailTabs } from "@/components/crm/LeadDetailTabs";
@@ -88,25 +89,27 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
         </div>
       )}
 
-      <LeadDetailTabs
-        leadId={id}
-        verificationBundle={verificationBundle}
-        financialData={financialData}
-        overview={
-          <LeadDetailView
-            lead={lead}
-            complianceContext={complianceContext}
-            checkResult={checkResult}
-            communications={communications}
-            followUps={followUps}
-            notes={notes}
-            auditEvents={auditEvents}
-            stateSupportStatus={state?.supportedStatus}
-            countySupportStatus={county?.supportedStatus}
-            isDemo={isDemo}
-          />
-        }
-      />
+      <Suspense fallback={null}>
+        <LeadDetailTabs
+          leadId={id}
+          verificationBundle={verificationBundle}
+          financialData={financialData}
+          overview={
+            <LeadDetailView
+              lead={lead}
+              complianceContext={complianceContext}
+              checkResult={checkResult}
+              communications={communications}
+              followUps={followUps}
+              notes={notes}
+              auditEvents={auditEvents}
+              stateSupportStatus={state?.supportedStatus}
+              countySupportStatus={county?.supportedStatus}
+              isDemo={isDemo}
+            />
+          }
+        />
+      </Suspense>
     </AppShell>
   );
 }

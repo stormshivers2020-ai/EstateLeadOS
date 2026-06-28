@@ -63,6 +63,8 @@ export interface EvidenceSource {
   sourceHash?: string | null;
   confidenceScore: number;
   matchedFields?: Record<string, string>;
+  jurisdictionState?: string | null;
+  jurisdictionCounty?: string | null;
   createdAt: string;
   citationNumber?: number;
   formattedCitation?: string;
@@ -133,16 +135,20 @@ export interface VerificationActionLog {
 }
 
 export type ProofChainStepKind =
-  | "property_address"
-  | "owner_record"
-  | "deed_record"
-  | "probate_estate_record"
-  | "possible_person"
+  | "government_signal"
+  | "estate_probate_signal"
+  | "decedent_estate_party"
+  | "property_match"
+  | "deed_transfer_checked"
+  | "representative_party"
+  | "property_visual"
+  | "evidence_citations"
   | "contact_candidate"
-  | "manual_approval";
+  | "manual_review";
 
 export interface ProofChainStep {
   id: string;
+  stepNumber: number;
   kind: ProofChainStepKind;
   title: string;
   description: string;

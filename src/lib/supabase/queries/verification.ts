@@ -50,6 +50,9 @@ function mapEvidence(row: Record<string, unknown>): EvidenceSource {
     sourceExcerpt: (row.source_excerpt as string) ?? null,
     sourceHash: (row.source_hash as string) ?? null,
     confidenceScore: (row.confidence_score as number) ?? 0,
+    matchedFields: (row.matched_fields as Record<string, string>) ?? {},
+    jurisdictionState: (row.jurisdiction_state as string) ?? null,
+    jurisdictionCounty: (row.jurisdiction_county as string) ?? null,
     createdAt: row.created_at as string,
   };
 }

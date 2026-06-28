@@ -29,7 +29,7 @@ function govSourceLabel(candidate: import("./types").LeadSearchCandidate): strin
   return `Government Source — ${name}`;
 }
 
-async function queueCandidatesSupabase(
+export async function queueCandidatesSupabase(
   candidates: import("./types").LeadSearchCandidate[],
   searchId: string
 ): Promise<Array<{ id: string; propertyAddress: string; ownerName: string; sourceUrl: string }>> {
@@ -86,6 +86,8 @@ export async function discoverLeadsFromInternet(
   let hitsScanned = 0;
   let connectorsRun = 0;
   let rejectedCount = 0;
+  let rejectedLowCertainty = 0;
+  let liveFetchCount = 0;
   let candidates: import("./types").LeadSearchCandidate[] = [];
 
   if (governmentSourcesOnly) {
@@ -98,6 +100,8 @@ export async function discoverLeadsFromInternet(
     queries = connectorResult.queries;
     hitsScanned = connectorResult.hitsScanned;
     connectorsRun = connectorResult.connectorsRun;
+    rejectedLowCertainty = connectorResult.rejectedLowCertainty;
+    liveFetchCount = connectorResult.liveFetchCount;
 
     candidates = governmentRecordsToCandidates(connectorResult.records, {
       state,
@@ -166,12 +170,15 @@ export async function discoverLeadsFromInternet(
       pending: [],
       warnings: [
         governmentSourcesOnly
-          ? "No official government records matched this market. EstateLeadOS does not create leads from Zillow, Realtor.com, or other marketplaces."
+          ? "No official government records with source proof matched this market. EstateLeadOS does not create leads without verified government citations."
           : "No qualifying records found. Enable Government Sources Only to restrict to official records.",
         rejectedCount > 0
           ? `${rejectedCount} non-government source(s) were rejected and logged for audit.`
+          : "",
+        rejectedLowCertainty > 0
+          ? `${rejectedLowCertainty} record(s) rejected — insufficient live source certainty (no lead created without proof).`
           : "Try Maryland/Harford connectors or verify Tavily can reach .gov domains.",
-      ],
+      ].filter(Boolean),
     };
   }
 
@@ -223,6 +230,10 @@ export async function discoverLeadsFromInternet(
         : "Government Sources Only is OFF — marketplace pages may appear. Turn ON for production.",
       `${pending.length} lead(s) await approval with source citations and proof chain.`,
       rejectedCount > 0 ? `${rejectedCount} rejected source(s) saved to audit log.` : "",
+      liveFetchCount > 0 ? `${liveFetchCount} official source URL(s) live-fetched for certainty verification.` : "",
+      rejectedLowCertainty > 0
+        ? `${rejectedLowCertainty} low-certainty record(s) excluded — leads require source proof.`
+        : "",
     ].filter(Boolean),
   };
 }

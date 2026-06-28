@@ -4,6 +4,15 @@ export { runGovernmentConnectors, isGovernmentSearchConfigured } from "./connect
 export { governmentRecordsToCandidates } from "./candidate-mapper";
 export { evaluateGovernmentVerification, statusFromGovernmentRecords } from "./verification-engine";
 export {
+  evaluateSourceCertainty,
+  applyCertaintyToNormalizedRecord,
+  filterRecordsWithSourceProof,
+  MIN_CERTAINTY_FOR_LEAD_QUEUE,
+  MIN_CERTAINTY_FOR_PIPELINE_ITEM,
+} from "./source-certainty";
+export { enrichRecordWithLiveFetch, fetchOfficialSource } from "./live-fetch";
+export { extractRecordFields } from "./field-extractor";
+export {
   isGovernmentSourcesOnlyEnabled,
   setGovernmentSourcesOnly,
   logRejectedHits,

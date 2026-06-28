@@ -1,6 +1,8 @@
 import { createStatewideConnector } from "./sdat";
+import { fetchHarfordParcels } from "./harford-arcgis";
+import type { RecordSourceConnector } from "../types";
 
-export const HARFORD_GIS_CONNECTOR = createStatewideConnector({
+const baseHarfordGis = createStatewideConnector({
   id: "md-harford-gis",
   sourceName: "Harford County GIS Parcel Map",
   sourceType: "gis_parcel_map",
@@ -16,6 +18,12 @@ export const HARFORD_GIS_CONNECTOR = createStatewideConnector({
     `site:harfordcountymd.gov GIS property map`,
   ],
 });
+
+export const HARFORD_GIS_CONNECTOR: RecordSourceConnector = {
+  ...baseHarfordGis,
+  fetchLiveRecords: (market) =>
+    fetchHarfordParcels({ county: market.county, state: market.state, limit: market.limit ?? 6 }),
+};
 
 export const HARFORD_TAX_CONNECTOR = createStatewideConnector({
   id: "md-harford-tax",
