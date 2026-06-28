@@ -1,7 +1,7 @@
 import { getSessionContext } from "@/lib/config/session";
 import { getLocalState, persistLocalState } from "@/lib/local/localStateStore";
 import { MARYLAND_COUNTIES } from "@/lib/record-sources/maryland/counties";
-import { getActiveSourceIdsForCounty } from "@/lib/record-sources/maryland/county-template";
+import { getActiveSourceIdsForCounty } from "@/lib/constants/maryland-pipeline-sources";
 import type {
   AutomationRunRecord,
   CountyPipelineConfig,

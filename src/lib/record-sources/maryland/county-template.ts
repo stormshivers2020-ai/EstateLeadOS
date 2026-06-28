@@ -7,6 +7,9 @@ import {
 } from "./sdat";
 import { HARFORD_GIS_CONNECTOR, HARFORD_TAX_CONNECTOR } from "./harford-gis";
 import { MARYLAND_COUNTIES } from "./counties";
+import { getActiveSourceIdsForCounty } from "@/lib/constants/maryland-pipeline-sources";
+
+export { getActiveSourceIdsForCounty };
 
 const STATEWIDE: RecordSourceConnector[] = [
   SDAT_CONNECTOR,
@@ -37,11 +40,4 @@ export function getConnectorsForCounty(stateAbbr: string, countyName: string): R
   return buildCountyConnectorBundle(countyName).connectors.filter(
     (c) => c.allowedForLeadCreation && c.trustLevel !== "rejected"
   );
-}
-
-/** Source IDs registered for a Maryland county pipeline */
-export function getActiveSourceIdsForCounty(countyName: string): string[] {
-  return buildCountyConnectorBundle(countyName).connectors
-    .filter((c) => c.allowedForLeadCreation && c.trustLevel !== "rejected")
-    .map((c) => c.id);
 }

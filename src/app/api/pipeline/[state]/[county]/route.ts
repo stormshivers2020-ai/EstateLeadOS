@@ -18,7 +18,7 @@ export async function PATCH(
     return NextResponse.json({ config });
   }
   if (body.status) {
-    const { getActiveSourceIdsForCounty } = await import("@/lib/record-sources/maryland/county-template");
+    const { getActiveSourceIdsForCounty } = await import("@/lib/constants/maryland-pipeline-sources");
     const config = updateCountyConfig(state.toUpperCase(), decodedCounty, {
       status: body.status,
       ...(body.isProofEngine !== undefined ? { isProofEngine: body.isProofEngine } : {}),
