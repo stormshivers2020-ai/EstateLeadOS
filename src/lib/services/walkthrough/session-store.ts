@@ -238,6 +238,35 @@ export function continueWalkthrough(sessionId: string): LeadWalkthroughSession |
     };
   }
 
+  if (session.currentStep === "outreach_direction" && session.leadId && stepData.outreach_direction) {
+    const ctx = getSessionContext();
+    const lead = getFullLeadByIdSync(session.leadId);
+    const due = stepData.outreach_direction.dueDate ?? new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    const state = getLocalState();
+    state.followUps = [
+      {
+        id: `fu-wt-${Date.now()}`,
+        leadId: session.leadId,
+        organizationId: session.organizationId,
+        assignedUserId: ctx.userId,
+        assignedUserName: ctx.userName,
+        propertyAddress: lead?.propertyAddress ?? "",
+        followUpDate: due.slice(0, 10),
+        followUpTime: null,
+        followUpMethod: "internal_note",
+        reason: `Walkthrough: ${stepData.outreach_direction.nextAction.replace(/_/g, " ")}`,
+        priority: "normal",
+        status: "scheduled",
+        relatedCommunicationId: null,
+        notes: stepData.outreach_direction.taskNotes,
+        createdAt: now(),
+        completedAt: null,
+      },
+      ...state.followUps,
+    ];
+    persistLocalState();
+  }
+
   const withScore = { ...session, stepData };
   const advanced = advanceSession(withScore);
   if (advanced.currentStep === session.currentStep) return null;

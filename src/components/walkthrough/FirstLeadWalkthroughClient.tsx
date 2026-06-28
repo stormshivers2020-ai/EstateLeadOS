@@ -22,6 +22,7 @@ export function FirstLeadWalkthroughClient() {
   const [error, setError] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [exitConfirm, setExitConfirm] = useState(false);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   const loadSession = useCallback(async () => {
     setLoading(true);
@@ -82,6 +83,7 @@ export function FirstLeadWalkthroughClient() {
       setSession(json.session);
       setStepData(json.session.stepData);
       setValidation(json.validation ?? canContinue(json.session));
+      setInfoMessage(json.message ?? null);
       return json.session as LeadWalkthroughSession;
     } finally {
       setBusy(false);
@@ -123,6 +125,11 @@ export function FirstLeadWalkthroughClient() {
   if (session.currentStep === "complete" || session.status === "complete") {
     return <WalkthroughComplete session={session} />;
   }
+
+  const canPressContinue =
+    session.currentStep === "final_archive" ||
+    (session.currentStep === "packet_builder" && !stepData.packet_builder?.packetId) ||
+    validation.valid;
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-[var(--nova-bg-primary)]">
@@ -167,6 +174,13 @@ export function FirstLeadWalkthroughClient() {
       )}
 
       <div className="grid flex-1 gap-0 lg:grid-cols-[220px_1fr_240px]">
+        <aside className="border-b border-slate-800/60 p-4 lg:hidden">
+          <WalkthroughStepTracker
+            currentStep={session.currentStep}
+            completedSteps={session.completedSteps}
+          />
+        </aside>
+
         <aside className="hidden border-r border-slate-800/60 p-4 lg:block">
           <WalkthroughStepTracker
             currentStep={session.currentStep}
@@ -177,6 +191,10 @@ export function FirstLeadWalkthroughClient() {
 
         <main className="flex flex-col p-4 sm:p-6">
           <WalkthroughStepForm session={{ ...session, stepData }} onChange={setStepData} />
+
+          {infoMessage && (
+            <p className="mt-4 text-sm text-sky-300">{infoMessage}</p>
+          )}
 
           {error && (
             <p className="mt-4 flex items-center gap-2 text-sm text-amber-300">
@@ -225,15 +243,24 @@ export function FirstLeadWalkthroughClient() {
             )}
             <button
               type="button"
-              disabled={!validation.valid || busy}
+              disabled={!canPressContinue || busy}
               onClick={handleContinue}
               className="ml-auto inline-flex items-center gap-2 rounded-xl bg-[var(--nova-gold)] px-6 py-2.5 text-sm font-semibold text-black disabled:opacity-40"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Continue <ChevronRight className="h-4 w-4" />
+              {session.currentStep === "packet_builder" && !stepData.packet_builder?.packetId
+                ? "Generate Packet"
+                : session.currentStep === "final_archive"
+                  ? "Save to Archive & Finish"
+                  : "Continue"}{" "}
+              <ChevronRight className="h-4 w-4" />
             </button>
           </div>
         </main>
+
+        <aside className="border-t border-slate-800/60 p-4 xl:hidden">
+          <WalkthroughEvidencePanel session={{ ...session, stepData }} />
+        </aside>
 
         <aside className="hidden border-l border-slate-800/60 p-4 xl:block">
           <WalkthroughEvidencePanel session={{ ...session, stepData }} />

@@ -30,10 +30,12 @@ export function validateStep(step: WalkthroughStepId, data: WalkthroughStepData,
   switch (step) {
     case "start": {
       const s = data.start;
-      if (!leadId) missing.push("Select or create a lead");
       if (!hasText(s?.estateName)) missing.push("Estate / lead name");
       if (!hasText(s?.county)) missing.push("County");
       if (!hasText(s?.state)) missing.push("State");
+      if (s?.createNew === false && !leadId && !hasText(s?.selectedLeadId)) {
+        missing.push("Select a lead from the list");
+      }
       break;
     }
     case "source_discovery": {
@@ -126,7 +128,7 @@ export function validateStep(step: WalkthroughStepId, data: WalkthroughStepData,
     }
     case "packet_builder": {
       const p = data.packet_builder;
-      if (!hasText(p?.packetId)) missing.push("Generate packet first");
+      if (!hasText(p?.packetId)) break;
       if (!p?.reviewed) missing.push("Mark packet as reviewed");
       if (p?.status !== "review_ready") missing.push("Packet status must be REVIEW_READY");
       break;
@@ -143,12 +145,8 @@ export function validateStep(step: WalkthroughStepId, data: WalkthroughStepData,
       if (!hasText(o?.taskNotes)) missing.push("Task notes");
       break;
     }
-    case "final_archive": {
-      const f = data.final_archive;
-      if (!hasText(f?.archiveId)) missing.push("Create archive record");
-      if (!hasText(f?.archiveLocation)) missing.push("Archive location");
+    case "final_archive":
       break;
-    }
     case "complete":
       break;
   }
