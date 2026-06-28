@@ -1,6 +1,7 @@
 import { getSessionContext } from "@/lib/config/session";
 import { getLocalState, persistLocalState } from "@/lib/local/localStateStore";
 import { MARYLAND_COUNTIES } from "@/lib/record-sources/maryland/counties";
+import { getActiveSourceIdsForCounty } from "@/lib/record-sources/maryland/county-template";
 import type {
   AutomationRunRecord,
   CountyPipelineConfig,
@@ -19,30 +20,83 @@ function now(): string {
 }
 
 export function seedMarylandCountyConfigs(orgId: string): CountyPipelineConfig[] {
-  return MARYLAND_COUNTIES.map((county) => ({
-    id: `cpc-md-${county.toLowerCase().replace(/[^a-z]/g, "-")}`,
-    organizationId: orgId,
-    stateAbbr: "MD",
-    countyName: county,
-    status: county === "Harford" ? "active" : county === "Montgomery" || county === "Baltimore" ? "configured" : "needs_manual_source_review",
-    automationMode: "supervised",
-    isPaused: false,
-    isProofEngine: county === "Harford",
-    activeSourceIds: county === "Harford"
-      ? ["md-sdat", "md-register-wills", "md-harford-gis", "md-harford-tax"]
-      : [],
-    signalsFound: 0,
-    estateMatches: 0,
-    propertyMatches: 0,
-    readyForReview: 0,
-    verifiedLeads: 0,
-    rejectedLeads: 0,
-    lastRunAt: null,
-    lastRunId: null,
-    notes: county === "Harford" ? "Maryland proof engine — first active county" : null,
-    createdAt: now(),
-    updatedAt: now(),
-  }));
+  return MARYLAND_COUNTIES.map((county) => {
+    const isHarford = county === "Harford";
+    const isMajor = county === "Montgomery" || county === "Baltimore" || county === "Baltimore City";
+    return {
+      id: `cpc-md-${county.toLowerCase().replace(/[^a-z]/g, "-")}`,
+      organizationId: orgId,
+      stateAbbr: "MD",
+      countyName: county,
+      status: isHarford ? "active" : isMajor ? "configured" : "configured",
+      automationMode: "supervised",
+      isPaused: false,
+      isProofEngine: isHarford,
+      activeSourceIds: getActiveSourceIdsForCounty(county),
+      signalsFound: 0,
+      estateMatches: 0,
+      propertyMatches: 0,
+      readyForReview: 0,
+      verifiedLeads: 0,
+      rejectedLeads: 0,
+      lastRunAt: null,
+      lastRunId: null,
+      notes: isHarford ? "Maryland proof engine — first active county" : "Statewide MD sources registered",
+      createdAt: now(),
+      updatedAt: now(),
+    };
+  });
+}
+
+/** Activate and register sources for every Maryland county pipeline */
+export function activateAllMarylandPipelines(): CountyPipelineConfig[] {
+  const state = ensurePipelineState();
+  const orgId = getSessionContext().organizationId;
+  const existing = new Map((state.countyPipelineConfigs ?? []).map((c) => [c.countyName, c]));
+  const next: CountyPipelineConfig[] = [];
+
+  for (const county of MARYLAND_COUNTIES) {
+    const isHarford = county === "Harford";
+    const sourceIds = getActiveSourceIdsForCounty(county);
+    const prev = existing.get(county);
+    if (prev) {
+      next.push({
+        ...prev,
+        activeSourceIds: sourceIds,
+        status: prev.isPaused ? prev.status : isHarford ? "active" : prev.status === "active" ? "active" : "configured",
+        isProofEngine: isHarford,
+        notes: prev.notes ?? (isHarford ? "Maryland proof engine" : "Statewide MD sources registered"),
+        updatedAt: now(),
+      });
+    } else {
+      next.push({
+        id: `cpc-md-${county.toLowerCase().replace(/[^a-z]/g, "-")}`,
+        organizationId: orgId,
+        stateAbbr: "MD",
+        countyName: county,
+        status: isHarford ? "active" : "configured",
+        automationMode: "supervised",
+        isPaused: false,
+        isProofEngine: isHarford,
+        activeSourceIds: sourceIds,
+        signalsFound: 0,
+        estateMatches: 0,
+        propertyMatches: 0,
+        readyForReview: 0,
+        verifiedLeads: 0,
+        rejectedLeads: 0,
+        lastRunAt: null,
+        lastRunId: null,
+        notes: isHarford ? "Maryland proof engine — first active county" : "Statewide MD sources registered",
+        createdAt: now(),
+        updatedAt: now(),
+      });
+    }
+  }
+
+  state.countyPipelineConfigs = next;
+  persistLocalState();
+  return next;
 }
 
 function ensurePipelineState() {
@@ -55,6 +109,8 @@ function ensurePipelineState() {
 
   if (!state.countyPipelineConfigs || state.countyPipelineConfigs.length === 0) {
     state.countyPipelineConfigs = seedMarylandCountyConfigs(getSessionContext().organizationId);
+  } else if (state.countyPipelineConfigs.length < MARYLAND_COUNTIES.length) {
+    activateAllMarylandPipelines();
   }
   if (!state.leadPipelineItems) state.leadPipelineItems = [];
   if (!state.leadPipelineEvents) state.leadPipelineEvents = [];

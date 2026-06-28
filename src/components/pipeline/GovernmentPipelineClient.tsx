@@ -34,6 +34,14 @@ export function GovernmentPipelineClient() {
   const [error, setError] = useState<string | null>(null);
   const [runOpen, setRunOpen] = useState(false);
   const [selectedCountyForRun, setSelectedCountyForRun] = useState<CountyPipelineConfig | null>(null);
+  const [runningAll, setRunningAll] = useState(false);
+  const [finishSummary, setFinishSummary] = useState<{
+    succeeded: number;
+    attempted: number;
+    totalRecords: number;
+    totalItems: number;
+    results: Array<{ countyName: string; success: boolean; itemsCreated?: number; error?: string }>;
+  } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -68,6 +76,32 @@ export function GovernmentPipelineClient() {
       setError("Could not run county pipeline.");
     } finally {
       setRunningCounty(null);
+    }
+  }
+
+  async function activateAllCounties() {
+    setError(null);
+    await fetch("/api/pipeline/activate-all", { method: "POST" });
+    await load();
+  }
+
+  async function finishAllPipelines() {
+    setRunningAll(true);
+    setError(null);
+    setFinishSummary(null);
+    try {
+      const res = await fetch("/api/pipeline/finish-all", { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error ?? "Finish all pipelines failed");
+        return;
+      }
+      setFinishSummary(json);
+      await load();
+    } catch {
+      setError("Could not finish all pipelines.");
+    } finally {
+      setRunningAll(false);
     }
   }
 
@@ -126,6 +160,28 @@ export function GovernmentPipelineClient() {
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
+          disabled={runningAll}
+          onClick={finishAllPipelines}
+          className="rounded-lg bg-[var(--nova-gold)] px-4 py-2 text-sm font-semibold text-black hover:opacity-90 disabled:opacity-50"
+        >
+          {runningAll ? (
+            <span className="inline-flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" /> Finishing all pipelines…
+            </span>
+          ) : (
+            "Finish All Pipelines"
+          )}
+        </button>
+        <button
+          type="button"
+          disabled={runningAll}
+          onClick={activateAllCounties}
+          className="rounded-lg border border-emerald-700/50 bg-emerald-950/30 px-4 py-2 text-sm text-emerald-200 hover:bg-emerald-900/40 disabled:opacity-50"
+        >
+          Activate All Counties
+        </button>
+        <button
+          type="button"
           onClick={() => setRunOpen(true)}
           className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600"
         >
@@ -144,6 +200,33 @@ export function GovernmentPipelineClient() {
           Review Queue
         </Link>
       </div>
+
+      {finishSummary && (
+        <Card className="border-emerald-800/40 bg-emerald-950/20">
+          <CardHeader>
+            <CardTitle className="text-base text-emerald-100">All pipelines finished</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p className="text-emerald-200">
+              {finishSummary.succeeded} of {finishSummary.attempted} counties ran successfully ·{" "}
+              {finishSummary.totalRecords} government records · {finishSummary.totalItems} pipeline items
+            </p>
+            <ul className="max-h-48 space-y-1 overflow-y-auto text-xs text-slate-400">
+              {finishSummary.results.map((r) => (
+                <li key={r.countyName} className="flex justify-between gap-2">
+                  <span>{r.countyName}</span>
+                  <span className={r.success ? "text-emerald-400" : "text-amber-400"}>
+                    {r.success ? `${r.itemsCreated ?? 0} items` : r.error ?? "failed"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <Link href="/review-queue" className="inline-block text-sky-400 hover:underline">
+              Open Review Queue →
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       <RunEstateLeadOSModal
         open={runOpen}

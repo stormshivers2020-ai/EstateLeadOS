@@ -212,6 +212,71 @@ export async function runCountyPipeline(stateAbbr: string, countyName: string) {
   }
 }
 
+export interface CountyPipelineRunResult {
+  countyName: string;
+  success: boolean;
+  runId?: string;
+  recordsFound?: number;
+  itemsCreated?: number;
+  error?: string;
+}
+
+export async function runAllCountyPipelines(stateAbbr = "MD"): Promise<{
+  activated: number;
+  attempted: number;
+  succeeded: number;
+  failed: number;
+  totalRecords: number;
+  totalItems: number;
+  results: CountyPipelineRunResult[];
+}> {
+  local.activateAllMarylandPipelines();
+
+  const configs = local.getCountyPipelineConfigs().filter(
+    (c) =>
+      c.stateAbbr === stateAbbr &&
+      !c.isPaused &&
+      c.status !== "needs_manual_source_review" &&
+      c.status !== "paused" &&
+      c.activeSourceIds.length > 0
+  );
+
+  const results: CountyPipelineRunResult[] = [];
+  let totalRecords = 0;
+  let totalItems = 0;
+
+  for (const config of configs) {
+    try {
+      const result = await runCountyPipeline(config.stateAbbr, config.countyName);
+      totalRecords += result.recordsFound;
+      totalItems += result.itemsCreated;
+      results.push({
+        countyName: config.countyName,
+        success: true,
+        runId: result.runId,
+        recordsFound: result.recordsFound,
+        itemsCreated: result.itemsCreated,
+      });
+    } catch (error) {
+      results.push({
+        countyName: config.countyName,
+        success: false,
+        error: error instanceof Error ? error.message : "Run failed",
+      });
+    }
+  }
+
+  return {
+    activated: local.getCountyPipelineConfigs().filter((c) => c.status !== "needs_manual_source_review").length,
+    attempted: configs.length,
+    succeeded: results.filter((r) => r.success).length,
+    failed: results.filter((r) => !r.success).length,
+    totalRecords,
+    totalItems,
+    results,
+  };
+}
+
 export function approvePipelineItem(itemId: string) {
   const session = getSessionContext();
   const item = local.getPipelineItems().find((i) => i.id === itemId);
@@ -273,4 +338,5 @@ export {
   toggleCountyPause,
   setCountyStatus,
   seedMarylandCountyConfigs,
+  activateAllMarylandPipelines,
 } from "./local-store";

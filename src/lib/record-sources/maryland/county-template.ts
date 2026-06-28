@@ -38,3 +38,10 @@ export function getConnectorsForCounty(stateAbbr: string, countyName: string): R
     (c) => c.allowedForLeadCreation && c.trustLevel !== "rejected"
   );
 }
+
+/** Source IDs registered for a Maryland county pipeline */
+export function getActiveSourceIdsForCounty(countyName: string): string[] {
+  return buildCountyConnectorBundle(countyName).connectors
+    .filter((c) => c.allowedForLeadCreation && c.trustLevel !== "rejected")
+    .map((c) => c.id);
+}

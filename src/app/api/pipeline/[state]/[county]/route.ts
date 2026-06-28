@@ -18,10 +18,12 @@ export async function PATCH(
     return NextResponse.json({ config });
   }
   if (body.status) {
+    const { getActiveSourceIdsForCounty } = await import("@/lib/record-sources/maryland/county-template");
     const config = updateCountyConfig(state.toUpperCase(), decodedCounty, {
       status: body.status,
       ...(body.isProofEngine !== undefined ? { isProofEngine: body.isProofEngine } : {}),
       ...(body.notes ? { notes: body.notes } : {}),
+      activeSourceIds: getActiveSourceIdsForCounty(decodedCounty),
     });
     return NextResponse.json({ config });
   }
