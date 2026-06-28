@@ -129,6 +129,7 @@ export interface LocalAppState {
   executiveReports: ExecutiveReport[];
   billingSimulation: string;
   automation: AutomationState;
+  walkthroughSessions: import("@/lib/types/walkthrough").LeadWalkthroughSession[];
 }
 
 function clone<T>(data: T): T {
@@ -203,6 +204,7 @@ function buildDemoState(): LocalAppState {
     executiveReports: [],
     billingSimulation: "active",
     automation: { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null },
+    walkthroughSessions: [],
   };
 }
 
@@ -273,6 +275,7 @@ function buildFreshState(): LocalAppState {
     executiveReports: [],
     billingSimulation: "trial",
     automation: { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null },
+    walkthroughSessions: [],
   };
 }
 
@@ -402,6 +405,9 @@ export function getLocalState(): LocalAppState {
       }
       if (!stored.verification) {
         stored.verification = getEmptyVerificationState();
+      }
+      if (!stored.walkthroughSessions) {
+        stored.walkthroughSessions = [];
       }
       if (envDemoEnabled() && stored.demoMode) {
         memoryState = stored;

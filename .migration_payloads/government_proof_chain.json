@@ -1,0 +1,1 @@
+{"name": "government_proof_chain", "query": "-- Phase 2 — Government proof chain: required document attorney flag\n\nALTER TABLE required_documents\n  ADD COLUMN IF NOT EXISTS required_for_attorney_review BOOLEAN NOT NULL DEFAULT false;\n"}

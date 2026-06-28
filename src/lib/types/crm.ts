@@ -204,6 +204,7 @@ export interface FullLeadDetail {
   dncReason: string | null;
   ownerHeir: OwnerHeirInfo;
   demoRecord: boolean;
+  walkthroughStatus?: "WALKTHROUGH_ACTIVE" | "WALKTHROUGH_COMPLETE" | null;
   createdAt: string;
   updatedAt: string;
 }

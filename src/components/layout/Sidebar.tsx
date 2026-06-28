@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 import { MAIN_NAVIGATION, NAV_SECTIONS } from "@/lib/constants/navigation";
 import { ScsNovaSidebarFooter } from "@/components/brand/ScsNovaBrand";
 import { NovaLogo } from "@/components/brand/NovaLogo";
+import { WalkthroughNavItem } from "@/components/walkthrough/WalkthroughNavItem";
 import { cn } from "@/lib/utils/cn";
 import { X } from "lucide-react";
 
@@ -84,25 +85,37 @@ export function Sidebar({
                 {items.map((item) => {
                   const isActive =
                     pathname === item.href ||
-                    (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                    (item.href !== "/dashboard" && pathname.startsWith(item.href.split("?")[0]));
                   const Icon = item.icon;
+                  const linkClass = cn(
+                    "flex min-h-11 items-center gap-3 rounded-lg py-2.5 text-sm transition-all duration-200",
+                    desktopCollapsed ? "md:justify-center md:px-2" : "px-3",
+                    isActive
+                      ? "nova-nav-active font-medium"
+                      : "text-[var(--nova-text-secondary)] hover:bg-white/[0.03] hover:text-[var(--nova-text-primary)]"
+                  );
                   return (
                     <li key={item.id}>
-                      <Link
-                        href={item.href}
-                        onClick={onNavigate}
-                        title={desktopCollapsed ? item.label : item.description}
-                        className={cn(
-                          "flex min-h-11 items-center gap-3 rounded-lg py-2.5 text-sm transition-all duration-200",
-                          desktopCollapsed ? "md:justify-center md:px-2" : "px-3",
-                          isActive
-                            ? "nova-nav-active font-medium"
-                            : "text-[var(--nova-text-secondary)] hover:bg-white/[0.03] hover:text-[var(--nova-text-primary)]"
-                        )}
-                      >
-                        <Icon className={cn("h-4 w-4 shrink-0", isActive && "text-[var(--nova-gold)]")} />
-                        <span className={cn("truncate", desktopCollapsed && "md:sr-only")}>{item.label}</span>
-                      </Link>
+                      {item.id === "first-lead-walkthrough" ? (
+                        <WalkthroughNavItem
+                          href={item.href}
+                          icon={Icon}
+                          isActive={isActive}
+                          desktopCollapsed={desktopCollapsed}
+                          description={item.description}
+                          onNavigate={onNavigate}
+                        />
+                      ) : (
+                        <Link
+                          href={item.href}
+                          onClick={onNavigate}
+                          title={desktopCollapsed ? item.label : item.description}
+                          className={linkClass}
+                        >
+                          <Icon className={cn("h-4 w-4 shrink-0", isActive && "text-[var(--nova-gold)]")} />
+                          <span className={cn("truncate", desktopCollapsed && "md:sr-only")}>{item.label}</span>
+                        </Link>
+                      )}
                     </li>
                   );
                 })}

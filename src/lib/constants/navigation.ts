@@ -21,6 +21,7 @@ import {
   ListChecks,
   LineChart,
   Route,
+  Footprints,
   type LucideIcon,
 } from "lucide-react";
 
@@ -43,6 +44,14 @@ export const NAV_SECTIONS = [
 ] as const;
 
 export const MAIN_NAVIGATION: NavItem[] = [
+  {
+    id: "first-lead-walkthrough",
+    label: "First Lead Walkthrough",
+    href: "/walkthrough/first-lead",
+    icon: Footprints,
+    section: "Command Center",
+    description: "Locked step-by-step: one lead from discovery to archive",
+  },
   {
     id: "deal-command",
     label: "Build Your First Packet",
