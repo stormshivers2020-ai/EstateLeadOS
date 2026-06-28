@@ -80,10 +80,13 @@ function toPendingSummary(p: PendingInternetLead) {
     state: p.candidate.state,
     county: p.candidate.county,
     estateLeadScore: p.candidate.estateLeadScore,
+    dataConfidenceScore: p.candidate.dataConfidenceScore,
     snippet: p.candidate.snippet,
     sourceTitle: p.candidate.sourceTitle,
     discoveredAt: p.discoveredAt,
     searchId: p.searchId,
+    isGovernmentSource: p.candidate.isGovernmentSource ?? false,
+    governmentVerificationStatus: p.candidate.governmentVerificationStatus ?? null,
   };
 }
 
@@ -103,10 +106,13 @@ export async function getPendingInternetLeads() {
       state: lead.state,
       county: lead.county,
       estateLeadScore: lead.estateLeadScore,
+      dataConfidenceScore: lead.dataConfidenceScore,
       snippet: lead.nextAction ?? "",
       sourceTitle: lead.sourceRecords[0]?.sourceName ?? "Internet Search",
       discoveredAt: lead.createdAt,
       searchId: lead.id,
+      isGovernmentSource: lead.sourceRecords.some((s) => s.sourceType === "government_record"),
+      governmentVerificationStatus: null,
     }));
   }
 

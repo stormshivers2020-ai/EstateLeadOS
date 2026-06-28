@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAutomation } from "./AutomationContext";
+import { AutomationLeadApprovalGate } from "./AutomationLeadApprovalGate";
 import { canRoleApprove, getAutomationState, type AutomationApproval } from "@/lib/automation";
 import { getSessionContext } from "@/lib/config/session";
 import { Badge } from "@/components/ui/Badge";
@@ -52,6 +53,7 @@ export function AutomationApprovalQueue({ filter = "all" }: { filter?: Filter })
     <div className="space-y-4">
       {items.map((approval) => {
         const canApprove = canRoleApprove(session.role, approval);
+        const isLeadDiscovery = approval.approvalType === "lead_discovery_approval";
         return (
           <Card key={approval.id} className="border-[var(--nova-border)]">
             <CardContent className="p-5 space-y-3">
@@ -72,10 +74,15 @@ export function AutomationApprovalQueue({ filter = "all" }: { filter?: Filter })
                   <Link href={`/leads/${approval.leadId}`} className="text-[var(--nova-blue)] hover:underline">Open lead</Link>
                 )}
               </div>
-              <p className="text-[10px] text-[var(--nova-text-muted)]">
-                If approved: automation resumes from paused step. If rejected: automation stops.
-              </p>
-              {approval.status === "pending" && canApprove && (
+              {!isLeadDiscovery && (
+                <p className="text-[10px] text-[var(--nova-text-muted)]">
+                  If approved: automation resumes from paused step. If rejected: automation stops.
+                </p>
+              )}
+              {approval.status === "pending" && isLeadDiscovery && canApprove && (
+                <AutomationLeadApprovalGate approvalId={approval.id} />
+              )}
+              {approval.status === "pending" && !isLeadDiscovery && canApprove && (
                 <div className="flex flex-wrap gap-2 pt-2">
                   <button type="button" onClick={() => approve(approval.id)} className="nova-btn-primary px-3 py-1.5 text-xs">
                     Approve and Resume

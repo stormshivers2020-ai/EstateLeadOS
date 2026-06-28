@@ -579,7 +579,7 @@ async function executeStepAsync(run: AutomationRun, step: AutomationStep): Promi
         leadId: run.leadId,
         approvalType: "lead_discovery_approval",
         approvalTitle: "Approve Internet Leads",
-        approvalDescription: `${pendingCount} internet lead(s) are waiting in Market Search / Lead Feed. Approve the ones you want, then resume automation here.`,
+        approvalDescription: `${pendingCount} discovered lead(s) need your review. Approve one lead below to continue automation.`,
         riskLevel: "moderate",
         requiredRole: "user",
       });
@@ -809,27 +809,90 @@ export function approveAndResume(approvalId: string, notes?: string): { run: Aut
   const approval = automation.approvals.find((a) => a.id === approvalId);
   if (!approval) return { run: null, error: "Approval not found" };
 
+  if (approval.approvalType === "lead_discovery_approval") {
+    return {
+      run: null,
+      error: "Select a pending lead and click Approve Lead & Continue.",
+    };
+  }
+
   const session = getSessionContext();
   const updatedApproval = updateApprovalStatus(approval, "approved", session.userId, notes);
   automation.approvals = automation.approvals.map((a) => (a.id === approvalId ? updatedApproval : a));
 
   const step = automation.steps.find((s) => s.approvalId === approvalId);
   if (step) {
-    if (approval.approvalType === "lead_discovery_approval") {
-      automation.steps = automation.steps.map((s) =>
-        s.id === step.id
-          ? { ...s, approvalId: null, requiresApproval: false, status: "pending" as const, updatedAt: new Date().toISOString() }
-          : s
-      );
-    } else {
-      automation.steps = automation.steps.map((s) =>
-        s.id === step.id ? completeStep(s, { approved: true }) : s
-      );
-    }
+    automation.steps = automation.steps.map((s) =>
+      s.id === step.id ? completeStep(s, { approved: true }) : s
+    );
   }
   saveAutomation(automation);
 
   return resumeAutomation(approval.automationRunId);
+}
+
+export function approveLeadDiscoveryWithLeadId(
+  approvalId: string,
+  leadId: string,
+  notes?: string
+): { run: AutomationRun | null; error?: string; message?: string } {
+  const automation = getAutomationState();
+  const approval = automation.approvals.find((a) => a.id === approvalId);
+  if (!approval) return { run: null, error: "Approval not found" };
+  if (approval.approvalType !== "lead_discovery_approval") {
+    return { run: null, error: "This approval requires selecting a pending lead." };
+  }
+  if (approval.status !== "pending") {
+    return { run: null, error: "Approval already processed" };
+  }
+  if (!leadId) {
+    return { run: null, error: "A lead must be approved before automation can resume." };
+  }
+
+  const session = getSessionContext();
+  const updatedApproval = updateApprovalStatus(approval, "approved", session.userId, notes);
+  automation.approvals = automation.approvals.map((a) => (a.id === approvalId ? updatedApproval : a));
+
+  const step = automation.steps.find((s) => s.approvalId === approvalId);
+  if (step) {
+    automation.steps = automation.steps.map((s) =>
+      s.id === step.id ? completeStep(s, { leadId, approvedLeadId: leadId, approved: true }) : s
+    );
+  }
+
+  const run = automation.runs.find((r) => r.id === approval.automationRunId);
+  if (run) {
+    automation.runs = automation.runs.map((r) =>
+      r.id === run.id
+        ? {
+            ...r,
+            leadId,
+            requiredApprovalIds: r.requiredApprovalIds?.filter((id) => id !== approvalId) ?? [],
+            updatedAt: new Date().toISOString(),
+          }
+        : r
+    );
+  }
+
+  saveAutomation(automation);
+
+  const lead = resolveLead(leadId);
+  const address = lead?.propertyAddress ?? leadId;
+  if (run) {
+    addLog(
+      run,
+      step?.stepName ?? "await_operator_lead_approval",
+      "lead_approved",
+      `Lead approved: ${address}. Automation resumed.`,
+      "success"
+    );
+  }
+
+  const resumeResult = resumeAutomation(approval.automationRunId);
+  return {
+    ...resumeResult,
+    message: `Lead approved. Automation resumed with ${address}.`,
+  };
 }
 
 export function rejectApproval(approvalId: string, notes?: string): AutomationApproval | null {

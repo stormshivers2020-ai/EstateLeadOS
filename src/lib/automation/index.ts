@@ -5,6 +5,7 @@ export {
   stopAutomation,
   resumeAutomation,
   approveAndResume,
+  approveLeadDiscoveryWithLeadId,
   rejectApproval,
   processAutomationRun,
   getAutomationLogs,

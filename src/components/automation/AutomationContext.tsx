@@ -8,6 +8,7 @@ import {
   stopAutomation,
   resumeAutomation,
   approveAndResume,
+  approveLeadDiscoveryWithLeadId,
   rejectApproval,
   type AutomationRun,
   type AutomationApproval,
@@ -24,6 +25,11 @@ interface AutomationContextValue {
   stop: () => void;
   resume: () => { error?: string };
   approve: (approvalId: string, notes?: string) => { error?: string };
+  approveDiscoveredLeadAndResume: (
+    approvalId: string,
+    pendingLeadId: string,
+    notes?: string
+  ) => Promise<{ error?: string; message?: string; leadId?: string }>;
   reject: (approvalId: string, notes?: string) => void;
   buttonLabel: string;
   panelOpen: boolean;
@@ -44,6 +50,9 @@ export function AutomationProvider({ children }: { children: ReactNode }) {
       : state.runs.find((r) => !["completed", "stopped", "cancelled"].includes(r.status)) ?? null;
     setActiveRun(run);
     setPendingApprovals(state.approvals.filter((a) => a.status === "pending"));
+    if (run?.status === "waiting_for_approval") {
+      setPanelOpen(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -82,6 +91,32 @@ export function AutomationProvider({ children }: { children: ReactNode }) {
     return { error: result.error };
   }, [refresh]);
 
+  const approveDiscoveredLeadAndResume = useCallback(
+    async (approvalId: string, pendingLeadId: string, notes?: string) => {
+      try {
+        const res = await fetch(`/api/leads/pending/${pendingLeadId}/approve`, {
+          method: "POST",
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          return { error: data.error ?? "Could not approve lead." };
+        }
+
+        const result = approveLeadDiscoveryWithLeadId(approvalId, data.leadId, notes);
+        refresh();
+        return {
+          error: result.error,
+          message: result.message,
+          leadId: data.leadId as string,
+        };
+      } catch {
+        return { error: "Could not approve lead." };
+      }
+    },
+    [refresh]
+  );
+
   const reject = useCallback((approvalId: string, notes?: string) => {
     rejectApproval(approvalId, notes);
     refresh();
@@ -100,6 +135,7 @@ export function AutomationProvider({ children }: { children: ReactNode }) {
         stop,
         resume,
         approve,
+        approveDiscoveredLeadAndResume,
         reject,
         buttonLabel,
         panelOpen,
