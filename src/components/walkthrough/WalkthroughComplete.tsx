@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { buildEvidenceSummary } from "@/lib/services/walkthrough/engine";
 import type { LeadWalkthroughSession } from "@/lib/types/walkthrough";
+import { PacketButton } from "@/components/packets/PacketButton";
 import { PartyPopper } from "lucide-react";
 
 export function WalkthroughComplete({ session }: { session: LeadWalkthroughSession }) {
@@ -28,18 +29,33 @@ export function WalkthroughComplete({ session }: { session: LeadWalkthroughSessi
         <Row label="Archive" value={summary.archiveLocation} />
       </dl>
 
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
         {session.leadId && (
-          <Link
-            href={`/leads/${session.leadId}`}
-            className="rounded-xl border border-slate-600 px-5 py-3 text-sm text-slate-200 hover:bg-slate-800"
-          >
-            Open lead
-          </Link>
+          <>
+            <PacketButton leadId={session.leadId} />
+            <Link
+              href={`/archive?lead=${session.leadId}`}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-600 px-5 py-3 text-sm text-slate-200 hover:bg-slate-800"
+            >
+              Archive
+            </Link>
+            <Link
+              href={`/leads/${session.leadId}?tab=attorney`}
+              className="inline-flex items-center justify-center rounded-xl border border-amber-700/50 px-5 py-3 text-sm text-amber-200 hover:bg-amber-950/30"
+            >
+              Attorney Review
+            </Link>
+            <Link
+              href={`/leads/${session.leadId}`}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-600 px-5 py-3 text-sm text-slate-200 hover:bg-slate-800"
+            >
+              Open lead
+            </Link>
+          </>
         )}
         <Link
           href={summary.archiveLocation.startsWith("/") ? summary.archiveLocation : "/archive"}
-          className="rounded-xl bg-[var(--nova-gold)] px-5 py-3 text-sm font-semibold text-black"
+          className="inline-flex items-center justify-center rounded-xl bg-[var(--nova-gold)] px-5 py-3 text-sm font-semibold text-black"
         >
           View archive
         </Link>

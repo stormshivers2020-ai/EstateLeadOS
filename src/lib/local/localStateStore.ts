@@ -130,6 +130,7 @@ export interface LocalAppState {
   billingSimulation: string;
   automation: AutomationState;
   walkthroughSessions: import("@/lib/types/walkthrough").LeadWalkthroughSession[];
+  leadPacketRecords: import("@/lib/types/lead-packet").LeadPacketRecord[];
 }
 
 function clone<T>(data: T): T {
@@ -205,6 +206,7 @@ function buildDemoState(): LocalAppState {
     billingSimulation: "active",
     automation: { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null },
     walkthroughSessions: [],
+    leadPacketRecords: [],
   };
 }
 
@@ -276,6 +278,7 @@ function buildFreshState(): LocalAppState {
     billingSimulation: "trial",
     automation: { runs: [], steps: [], approvals: [], logs: [], payoutReadiness: [], activeRunId: null },
     walkthroughSessions: [],
+    leadPacketRecords: [],
   };
 }
 
@@ -319,6 +322,8 @@ function stripDemoFromStored(stored: LocalAppState): LocalAppState {
   fresh.processStepStatuses = stored.processStepStatuses ?? [];
   fresh.executiveReports = stored.executiveReports ?? [];
   fresh.automation = stored.automation ?? fresh.automation;
+  fresh.walkthroughSessions = stored.walkthroughSessions ?? [];
+  fresh.leadPacketRecords = stored.leadPacketRecords ?? [];
   fresh.importBatches = stored.importBatches.filter((b) => !b.demoRecord);
   fresh.connectorLogs = stored.connectorLogs ?? [];
   fresh.platformAudit = (stored.platformAudit ?? []).filter(
@@ -408,6 +413,9 @@ export function getLocalState(): LocalAppState {
       }
       if (!stored.walkthroughSessions) {
         stored.walkthroughSessions = [];
+      }
+      if (!stored.leadPacketRecords) {
+        stored.leadPacketRecords = [];
       }
       if (envDemoEnabled() && stored.demoMode) {
         memoryState = stored;

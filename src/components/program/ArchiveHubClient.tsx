@@ -337,6 +337,18 @@ function ArchiveItemRow({
           </dl>
         </div>
         <div className="flex max-w-full flex-wrap gap-1">
+          <Link
+            href={`/packets/${item.leadId}`}
+            className="inline-flex items-center gap-1 rounded border border-sky-700/50 px-2 py-1 text-xs text-sky-300 hover:bg-sky-950/30"
+          >
+            <ExternalLink className="h-3 w-3" /> View Packet
+          </Link>
+          <Link
+            href={`/packets/${item.leadId}?rebuild=1`}
+            className="inline-flex items-center gap-1 rounded border border-violet-700/50 px-2 py-1 text-xs text-violet-200 hover:bg-violet-950/30"
+          >
+            Rebuild Packet
+          </Link>
           <ActionBtn onClick={onOpen} icon={<ExternalLink className="h-3 w-3" />} label="Open" />
           <ActionBtn onClick={onPrint} icon={<Printer className="h-3 w-3" />} label="Print" />
           <ActionBtn

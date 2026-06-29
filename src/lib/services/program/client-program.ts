@@ -132,7 +132,7 @@ export async function printPacketAction(
     return { printableHtml: packet.printableHtml };
   }
 
-  const json = await fetchJson<{ printableHtml?: string; error?: string }>(`/api/packets/${packetId}`, {
+  const json = await fetchJson<{ printableHtml?: string; error?: string }>(`/api/packets/actions/${packetId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "print" }),
@@ -149,7 +149,7 @@ export async function archivePacketAction(
     return { archive: archivePacket(packet) };
   }
 
-  const json = await fetchJson<{ archive?: LeadArchive; error?: string }>(`/api/packets/${packetId}`, {
+  const json = await fetchJson<{ archive?: LeadArchive; error?: string }>(`/api/packets/actions/${packetId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "archive" }),
@@ -256,7 +256,7 @@ export async function generatePdfPlaceholderAction(
     updateProgramPacket(packetId, { pdfUrl: placeholder });
     return { pdfUrl: placeholder };
   }
-  const json = await fetchJson<{ pdfUrl?: string; error?: string }>(`/api/packets/${packetId}`, {
+  const json = await fetchJson<{ pdfUrl?: string; error?: string }>(`/api/packets/actions/${packetId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "pdf_placeholder" }),
@@ -275,7 +275,7 @@ export async function saveToFirstArchiveAction(
     return { archive, message: "Saved to First Archive (Step 14)." };
   }
   const json = await fetchJson<{ archive?: LeadArchive; error?: string; message?: string }>(
-    `/api/packets/${packetId}`,
+    `/api/packets/actions/${packetId}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -302,7 +302,7 @@ export async function sendToAttorneyReviewAction(
     }
   }
   const json = await fetchJson<{ success?: boolean; message?: string; error?: string }>(
-    `/api/packets/${packetId}`,
+    `/api/packets/actions/${packetId}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

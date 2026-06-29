@@ -1,6 +1,7 @@
 import { ScoreBadge, RiskBadge } from "@/components/compliance/ComplianceBadges";
 import { PipelineStageBadge, DncBadge } from "./PipelineBadges";
 import { AutomationButton } from "@/components/automation/AutomationButton";
+import { PacketButton } from "@/components/packets/PacketButton";
 import { Badge } from "@/components/ui/Badge";
 import { getLeadTypeName } from "@/lib/constants/lead-types";
 import type { LeadTypeId } from "@/lib/types/leads";
@@ -54,7 +55,10 @@ export function LeadDetailHeader({
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--nova-border)] pt-4">
         <p className="text-sm text-[var(--nova-text-secondary)]">Primary action: <span className="font-medium text-[var(--nova-text-primary)]">{nextAction}</span></p>
-        <AutomationButton leadId={leadId} compact />
+        <div className="flex flex-wrap items-center gap-2">
+          <PacketButton leadId={leadId} />
+          <AutomationButton leadId={leadId} compact />
+        </div>
       </div>
     </div>
   );

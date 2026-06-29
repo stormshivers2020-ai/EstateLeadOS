@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAutomation } from "./AutomationContext";
+import { PacketButton } from "@/components/packets/PacketButton";
 import { Badge } from "@/components/ui/Badge";
 import { GOVERNMENT_STATUS_LABELS, type GovernmentVerificationStatus } from "@/lib/types/government";
 import {
@@ -127,9 +128,10 @@ export function AutomationLeadApprovalGate({ approvalId }: AutomationLeadApprova
                   href={`/walkthrough/first-lead?leadId=${encodeURIComponent(success.leadId)}`}
                   className="rounded-lg border border-[var(--nova-border)] px-3 py-1.5 text-xs text-[var(--nova-text-secondary)] hover:border-[var(--nova-gold)]"
                 >
-                  Start First Lead Walkthrough
+                  Start Walkthrough
                 </Link>
               )}
+              {success.leadId && <PacketButton leadId={success.leadId} variant="secondary" className="inline-block" />}
               <button
                 type="button"
                 onClick={() => setPanelOpen(true)}
